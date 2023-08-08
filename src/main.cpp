@@ -39,9 +39,58 @@ void onReceive(int _packetSize)
 
 void canTask(void *parameter)
 {
+  Serial.println("CAN Task");
   while (1)
   {
-    Serial.println("CAN Task");
+    CanMessage rxmsg;
+    if (cegCharger.run())
+    {
+
+    }
+    else
+    {
+      if(xQueueReceive(canSenderTaskQueue, &rxmsg, 1000)==pdTRUE)
+      {
+        Serial.println("Count : " + String(count));
+        Serial.print("Frame id : ");
+        Serial.println(rxmsg.frameId.id, HEX);
+        Serial.println("Extended : " + String(rxmsg.extended));
+        Serial.println("Remote : " + String(rxmsg.rtr));
+        Serial.println("Length : " + String(rxmsg.dlc));
+        Serial.print("Data : ");
+        for (size_t i = 0; i < rxmsg.dlc; i++)
+        {
+          Serial.print(rxmsg.data[i], HEX);
+          Serial.print(" ");
+        }
+        Serial.println();
+        count++;
+      }
+      else
+      {
+
+      }
+    }
+    
+    CanMessage canmsg;
+    canmsg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    canmsg.frameId.frameField.deviceNumber = CEG_CHARGER::DeviceNumber::Single_Module;
+    canmsg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information;
+    canmsg.frameId.frameField.destinationAddress = 0x00;
+    canmsg.frameId.frameField.sourceAddress = 0xf0;
+    canmsg.extended = true;
+    canmsg.rtr = false;
+    canmsg.dlc = 8;
+    canmsg.data[0] = 0x00;
+    canmsg.data[1] = 0x01;
+    canmsg.data[2] = 0x02;
+    canmsg.data[3] = 0x03;
+    canmsg.data[4] = 0x04;
+    canmsg.data[5] = 0x05;
+    canmsg.data[6] = 0x06;
+    canmsg.data[7] = 0x07;
+
+    
     vTaskDelay(10 / portTICK_PERIOD_MS); 
   }
 }
@@ -73,44 +122,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   // Serial.println("Array Size : " + String(arrSize));
-  cegCharger.run();
-  CanMessage canmsg;
-  canmsg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
-  canmsg.frameId.frameField.deviceNumber = CEG_CHARGER::DeviceNumber::Single_Module;
-  canmsg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information;
-  canmsg.frameId.frameField.destinationAddress = 0x00;
-  canmsg.frameId.frameField.sourceAddress = 0xf0;
-  canmsg.extended = true;
-  canmsg.rtr = false;
-  canmsg.dlc = 8;
-  canmsg.data[0] = 0x00;
-  canmsg.data[1] = 0x01;
-  canmsg.data[2] = 0x02;
-  canmsg.data[3] = 0x03;
-  canmsg.data[4] = 0x04;
-  canmsg.data[5] = 0x05;
-  canmsg.data[6] = 0x06;
-  canmsg.data[7] = 0x07;
-
-  CanMessage rxmsg;
-
-  if(xQueueReceive(canSenderTaskQueue,&rxmsg, 1000)==pdTRUE)
-  {
-    Serial.println("Count : " + String(count));
-    Serial.print("Frame id : ");
-    Serial.println(rxmsg.frameId.id, HEX);
-    Serial.println("Extended : " + String(rxmsg.extended));
-    Serial.println("Remote : " + String(rxmsg.rtr));
-    Serial.println("Length : " + String(rxmsg.dlc));
-    Serial.print("Data : ");
-    for (size_t i = 0; i < rxmsg.dlc; i++)
-    {
-      Serial.print(rxmsg.data[i], HEX);
-      Serial.print(" ");
-    }
-    Serial.println();
-    count++;
-  }
+  
 
   // if (cegCharger.putToQueue(canmsg))
   // {

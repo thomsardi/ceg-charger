@@ -70,15 +70,23 @@ int CegCharger::processPacket(const CanMessage &canMessage)
 {
     if (canMessage.frameId.frameField.commandNumber == 0x01 && canMessage.frameId.frameField.errorCode == 0x00)
     {
-        switch (canMessage.frameId.frameField.deviceNumber)
+        if (canMessage.frameId.frameField.destinationAddress == _controllerAddress)
         {
-        case 0x0a:
-            
-            break;
-        
-        default:
-            break;
+            switch (canMessage.frameId.frameField.deviceNumber)
+            {
+            case 0x0a:
+                _cegData.systemData.systemVoltage = canMessage.data[0] << 24 + canMessage.data[1] << 16 + canMessage.data[2] << 8 + canMessage.data[3];
+                _cegData.systemData.totalSystemCurrent = canMessage.data[4] << 24 + canMessage.data[5] << 16 + canMessage.data[6] << 8 + canMessage.data[7];
+                break;
+            case 0x0b :
+                
+
+            default:
+                break;
+            }
         }
+        
+       
     }
 }
 

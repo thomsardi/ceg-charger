@@ -81,64 +81,63 @@ struct CegData {
         float groupVoltage;
         float totalGroupCurrent;
         uint8_t connectedModule;
-    } groupData;
-
-    struct ModuleData
-    {
-        float moduleVoltage;
-        float moduleCurrent;
-        uint8_t connectedGroup;
-        struct ModuleState 
+        struct ModuleData
         {
-            union State_0
+            float moduleVoltage;
+            float moduleCurrent;
+            uint8_t connectedGroup;
+            struct ModuleState 
             {
-                struct Bits
+                union State_0
                 {
-                    uint8_t outputShort :1;
-                    uint8_t :1;
-                    uint8_t innerCommInterrupt :1;
-                    uint8_t pfcSideAbnormal :1;
-                    uint8_t :1;
-                    uint8_t dischargeAbnormal :1;
-                    uint8_t :2;
-                } bitInfo;
-                uint8_t val;
-            } state0;
+                    struct Bits
+                    {
+                        uint8_t outputShort :1;
+                        uint8_t :1;
+                        uint8_t innerCommInterrupt :1;
+                        uint8_t pfcSideAbnormal :1;
+                        uint8_t :1;
+                        uint8_t dischargeAbnormal :1;
+                        uint8_t :2;
+                    } bitInfo;
+                    uint8_t val;
+                } state0;
 
-            union State_1
-            {
-                struct Bits
+                union State_1
                 {
-                    uint8_t mdlOffState :1;
-                    uint8_t mdlFault :1;
-                    uint8_t mdlProtect :1;
-                    uint8_t fanFault :1;
-                    uint8_t overTemperature :1;
-                    uint8_t outputOVerVoltage :1;
-                    uint8_t walkInEnable :1;
-                    uint8_t commInterrupt :1;
-                } bitInfo;
-                uint8_t val;
-            } state1;
+                    struct Bits
+                    {
+                        uint8_t mdlOffState :1;
+                        uint8_t mdlFault :1;
+                        uint8_t mdlProtect :1;
+                        uint8_t fanFault :1;
+                        uint8_t overTemperature :1;
+                        uint8_t outputOVerVoltage :1;
+                        uint8_t walkInEnable :1;
+                        uint8_t commInterrupt :1;
+                    } bitInfo;
+                    uint8_t val;
+                } state1;
 
-            union State_2
-            {
-                struct Bits
+                union State_2
                 {
-                    uint8_t powerLimit :1;
-                    uint8_t mdlIdRepetition :1;
-                    uint8_t loadUnsharing :1;
-                    uint8_t inputPhaseLost :1;
-                    uint8_t inputUnbalance :1;
-                    uint8_t inputUnderVoltage :1;
-                    uint8_t inputOverVoltage :1;
-                    uint8_t pfcSideOff :1;
-                } bitInfo;
-                uint8_t val;
-            } state2;
-            
-        } moduleState;
-    } moduleData[12];
+                    struct Bits
+                    {
+                        uint8_t powerLimit :1;
+                        uint8_t mdlIdRepetition :1;
+                        uint8_t loadUnsharing :1;
+                        uint8_t inputPhaseLost :1;
+                        uint8_t inputUnbalance :1;
+                        uint8_t inputUnderVoltage :1;
+                        uint8_t inputOverVoltage :1;
+                        uint8_t pfcSideOff :1;
+                    } bitInfo;
+                    uint8_t val;
+                } state2;
+                
+            } moduleState;
+        } moduleData[12];
+    } groupData[2];
 
 };
 
