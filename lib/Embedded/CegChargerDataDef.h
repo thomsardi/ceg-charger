@@ -68,7 +68,8 @@ namespace MessageIdResponse {
     };
 }
 
-struct CegData {
+struct CegData 
+{
     struct SystemData 
     {
         float systemVoltage;
@@ -78,67 +79,69 @@ struct CegData {
 
     struct GroupData 
     {
+        uint8_t number;
         float groupVoltage;
         float totalGroupCurrent;
         uint8_t connectedModule;
-        struct ModuleData
+    } grpData[8];
+
+    struct ModuleData
+    {
+        uint8_t number;
+        float moduleVoltage;
+        float moduleCurrent;
+        uint8_t connectedGroup;
+        struct ModuleState 
         {
-            float moduleVoltage;
-            float moduleCurrent;
-            uint8_t connectedGroup;
-            struct ModuleState 
+            union State_0
             {
-                union State_0
+                struct Bits
                 {
-                    struct Bits
-                    {
-                        uint8_t outputShort :1;
-                        uint8_t :1;
-                        uint8_t innerCommInterrupt :1;
-                        uint8_t pfcSideAbnormal :1;
-                        uint8_t :1;
-                        uint8_t dischargeAbnormal :1;
-                        uint8_t :2;
-                    } bitInfo;
-                    uint8_t val;
-                } state0;
+                    uint8_t outputShort :1;
+                    uint8_t :1;
+                    uint8_t innerCommInterrupt :1;
+                    uint8_t pfcSideAbnormal :1;
+                    uint8_t :1;
+                    uint8_t dischargeAbnormal :1;
+                    uint8_t :2;
+                } bitInfo;
+                uint8_t val;
+            } state0;
 
-                union State_1
+            union State_1
+            {
+                struct Bits
                 {
-                    struct Bits
-                    {
-                        uint8_t mdlOffState :1;
-                        uint8_t mdlFault :1;
-                        uint8_t mdlProtect :1;
-                        uint8_t fanFault :1;
-                        uint8_t overTemperature :1;
-                        uint8_t outputOVerVoltage :1;
-                        uint8_t walkInEnable :1;
-                        uint8_t commInterrupt :1;
-                    } bitInfo;
-                    uint8_t val;
-                } state1;
+                    uint8_t mdlOffState :1;
+                    uint8_t mdlFault :1;
+                    uint8_t mdlProtect :1;
+                    uint8_t fanFault :1;
+                    uint8_t overTemperature :1;
+                    uint8_t outputOVerVoltage :1;
+                    uint8_t walkInEnable :1;
+                    uint8_t commInterrupt :1;
+                } bitInfo;
+                uint8_t val;
+            } state1;
 
-                union State_2
+            union State_2
+            {
+                struct Bits
                 {
-                    struct Bits
-                    {
-                        uint8_t powerLimit :1;
-                        uint8_t mdlIdRepetition :1;
-                        uint8_t loadUnsharing :1;
-                        uint8_t inputPhaseLost :1;
-                        uint8_t inputUnbalance :1;
-                        uint8_t inputUnderVoltage :1;
-                        uint8_t inputOverVoltage :1;
-                        uint8_t pfcSideOff :1;
-                    } bitInfo;
-                    uint8_t val;
-                } state2;
-                
-            } moduleState;
-        } moduleData[12];
-    } groupData[2];
-
+                    uint8_t powerLimit :1;
+                    uint8_t mdlIdRepetition :1;
+                    uint8_t loadUnsharing :1;
+                    uint8_t inputPhaseLost :1;
+                    uint8_t inputUnbalance :1;
+                    uint8_t inputUnderVoltage :1;
+                    uint8_t inputOverVoltage :1;
+                    uint8_t pfcSideOff :1;
+                } bitInfo;
+                uint8_t val;
+            } state2;
+            
+        } moduleState;
+    } mdlData[16];
 };
 
 struct RequestCommand {
@@ -270,7 +273,7 @@ struct CanMessage {
     bool extended;
     bool rtr;
     uint8_t dlc;
-    uint8_t data[8];
+    uint8_t data[8] = {0};
 };
     
 

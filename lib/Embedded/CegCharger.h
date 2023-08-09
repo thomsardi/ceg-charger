@@ -47,6 +47,16 @@ class CegCharger : public ESP32SJA1000Class{
         int getSendQueueSize();
         int processPacket(const CanMessage &canMessage);
 
+        void readSystemVoltageCurrent(int deviceNumber, int destinationAddress);
+        void readSystemNumberInformation(int deviceNumber, int destinationAddress);
+        void readModuleVoltageCurrent(int destinationAddress);
+        void readModuleExtraInformation(int destinationAddress);
+        void setWalkIn(int deviceNumber, int destinationAddress, bool enable = true, uint16_t value = 0);
+        void setBlink(int deviceNumber, int destinationAddress, bool blink = false);
+        void setOnOff(int deviceNumber, int destinationAddress, bool off = true);
+        void setSystemVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current);
+        void setModuleVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current);
+
         using CANControllerClass::filterExtended;
         virtual int filterExtended(long id, long mask);
 
@@ -63,6 +73,8 @@ class CegCharger : public ESP32SJA1000Class{
         int moduleRequestOnOff_32(int frameId, int buffer[], size_t bufferLength);
         void modifyRegister(uint8_t address, uint8_t mask, uint8_t value);
         void writeRegister(uint8_t address, uint8_t value);
+        void fillStack();
+        void printStack();
         bool _loopback;
         int _controllerAddress;
         int _destinationAddr;
@@ -81,10 +93,8 @@ class CegCharger : public ESP32SJA1000Class{
         uint8_t _msgContent[4] = {0};
         uint8_t _data[8] = {0};
         CegData _cegData;
-        size_t _groupArrSize = sizeof(_cegData.groupData) / sizeof(_cegData.groupData);
-        size_t _moduleArrSize = sizeof(_cegData.groupData[0].moduleData) / sizeof(_cegData.groupData[0].moduleData[0]);
         Vector<CegData::GroupData> _groupData;
-        Vector<CegData::GroupData::ModuleData> _moduleData;
+        Vector<CegData::ModuleData> _moduleData;
 };
 
 #endif

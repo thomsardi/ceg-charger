@@ -5,7 +5,9 @@
 #include <CegCharger.h>
 #include <Vector.h>
 
-CegCharger cegCharger;
+int controllerAddress = 0xF0;
+
+CegCharger cegCharger(0xF0);
 
 TaskHandle_t canSenderTaskHandle;
 QueueHandle_t canSenderTaskQueue = xQueueCreate(64, sizeof(CanMessage));
@@ -43,6 +45,24 @@ void canTask(void *parameter)
   while (1)
   {
     CanMessage rxmsg;
+    // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+    // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x01);
+    // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+    // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, 0x01);
+    // cegCharger.readModuleVoltageCurrent(0x00);
+    // cegCharger.readModuleExtraInformation(0x01);
+    cegCharger.setWalkIn(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+    cegCharger.setWalkIn(CEG_CHARGER::DeviceNumber::Single_Module, 0x00, false);
+    cegCharger.setBlink(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, true);
+    cegCharger.setBlink(CEG_CHARGER::DeviceNumber::Single_Module, 0x00, false);
+    cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+    cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, 0x01);
+    cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Group_Module, 0x02);
+    cegCharger.setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, 300000, 10000);
+    cegCharger.setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
+    cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, 300000, 10000);
+    cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
+
     if (cegCharger.run())
     {
 
@@ -100,7 +120,7 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
 
-  if (!cegCharger.begin(250E3)) {
+  if (!cegCharger.begin(125E3)) {
     Serial.println("Starting CAN failed!");
     while (1);
   }
