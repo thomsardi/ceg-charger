@@ -7,11 +7,71 @@ CegCharger::CegCharger(int controllerAddress)
     _controllerAddress = controllerAddress;
     _commandList.setStorage(_requestCommand);
     _canMessage.setStorage(_canMessageStorage);
-    _moduleData.setStorage(_cegData.moduleData);
+    _groupData.setStorage(_cegData.grpData);
+    _moduleData.setStorage(_cegData.mdlData);
+    fillStack();
+}
+
+void CegCharger::fillStack()
+{
+    _cegData.systemData.systemVoltage = 460.15;
+    _cegData.systemData.totalSystemCurrent = 15.24;
+    _cegData.systemData.connectedModule = 32;
+
+    for (size_t i = 0; i < _groupData.max_size(); i++)
+    {
+        CegData::GroupData data;
+        data.number = i;
+        data.connectedModule = i;
+        data.groupVoltage = i*100;
+        data.totalGroupCurrent = i*10;
+        _groupData.push_back(data);
+    }
+
+    for (size_t i = 0; i < _moduleData.max_size(); i++)
+    {
+        CegData::ModuleData data;
+        data.connectedGroup = i;
+        data.number = i;
+        data.moduleVoltage = (i*200);
+        data.moduleCurrent = (i*20);
+        data.moduleState.state0.val = i + 123;
+        data.moduleState.state1.val = i + 124;
+        data.moduleState.state2.val = i + 125;
+        _moduleData.push_back(data);
+    }        
+}
+
+void CegCharger::printStack()
+{
+    Serial.println("System Voltage : " + String(_cegData.systemData.systemVoltage));
+    Serial.println("Total System Current : " + String(_cegData.systemData.totalSystemCurrent));
+    Serial.println("Connected Module : " + String(_cegData.systemData.connectedModule));
+
+    for (size_t i = 0; i < _groupData.size(); i++)
+    {
+        Serial.println("Group Number : " + String(_groupData.at(i).connectedModule));
+        Serial.println("Group Voltage : " + String(_groupData.at(i).groupVoltage));
+        Serial.println("Total Group Current : " + String(_groupData.at(i).totalGroupCurrent));
+        Serial.println("Connected Module : " + String(_groupData.at(i).connectedModule));
+    }
+
+    for (size_t i = 0; i < _moduleData.size(); i++)
+    {
+        Serial.println("Connected to Group : " + String(_moduleData.at(i).connectedGroup));
+        Serial.println("Module Number : " + String(_moduleData.at(i).number));
+        Serial.println("Module Voltage : " + String(_moduleData.at(i).moduleVoltage));
+        Serial.println("Module Current : " + String(_moduleData.at(i).moduleCurrent));
+        Serial.println("State 0 : " + String(_moduleData.at(i).moduleState.state0.val));
+        Serial.println("State 1 : " + String(_moduleData.at(i).moduleState.state1.val));
+        Serial.println("State 2 : " + String(_moduleData.at(i).moduleState.state2.val));
+    }       
+
 }
 
 int CegCharger::run()
 {
+    // printStack();
     int status = 0;
     // Serial.println(_commandList.size());
     if (_canMessage.size() > 0)
@@ -27,6 +87,168 @@ int CegCharger::run()
         _canMessage.remove(0);
     }
     return status;
+}
+
+void CegCharger::readSystemVoltageCurrent(int deviceNumber, int destinationAddress)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = deviceNumber;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.dlc = 8;
+    beginExtendedPacket(msg.frameId.id, msg.dlc);
+    write(msg.data, msg.dlc);
+    endPacket();   
+}
+
+void CegCharger::readSystemNumberInformation(int deviceNumber, int destinationAddress)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = deviceNumber;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_System_Number_Information;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.dlc = 8;
+    beginExtendedPacket(msg.frameId.id, msg.dlc);
+    write(msg.data, msg.dlc);
+    endPacket();   
+}
+
+void CegCharger::readModuleVoltageCurrent(int destinationAddress)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = CEG_CHARGER::DeviceNumber::Single_Module;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.dlc = 8;
+    beginExtendedPacket(msg.frameId.id, msg.dlc);
+    write(msg.data, msg.dlc);
+    endPacket();   
+}
+
+void CegCharger::readModuleExtraInformation(int destinationAddress)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = CEG_CHARGER::DeviceNumber::Single_Module;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_Module_Number_Temperature_State_Information;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.dlc = 8;
+    beginExtendedPacket(msg.frameId.id, msg.dlc);
+    write(msg.data, msg.dlc);
+    endPacket();   
+}
+
+void CegCharger::setWalkIn(int deviceNumber, int destinationAddress, bool enable, uint16_t value)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = deviceNumber;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Set_Walk_in;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.extended = true;
+    msg.rtr = false;
+    msg.dlc = 8;
+    msg.data[0] = enable;
+    msg.data[6] = value >> 8;
+    msg.data[7] = value & 0xff;
+    putToQueue(msg);
+    // beginExtendedPacket(msg.frameId.id, msg.dlc);
+    // write(msg.data, msg.dlc);
+    // endPacket();   
+}
+
+void CegCharger::setBlink(int deviceNumber, int destinationAddress, bool blink)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = deviceNumber;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Set_Blink;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.extended = true;
+    msg.rtr = false;
+    msg.dlc = 8;
+    msg.data[0] = blink;
+    putToQueue(msg);
+    // beginExtendedPacket(msg.frameId.id, msg.dlc);
+    // write(msg.data, msg.dlc);
+    // endPacket();   
+}
+
+void CegCharger::setOnOff(int deviceNumber, int destinationAddress, bool off)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = deviceNumber;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Set_On_Off;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.extended = true;
+    msg.rtr = false;
+    msg.dlc = 8;
+    msg.data[0] = off;
+    putToQueue(msg);
+    // beginExtendedPacket(msg.frameId.id, msg.dlc);
+    // write(msg.data, msg.dlc);
+    // endPacket();   
+}
+
+void CegCharger::setSystemVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = deviceNumber;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Set_System_Output_Voltage_Current;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.extended = true;
+    msg.rtr = false;
+    msg.dlc = 8;
+    msg.data[0] = voltage >> 24;
+    msg.data[1] = voltage >> 16;
+    msg.data[2] = voltage >> 8;
+    msg.data[3] = voltage & 0xff;
+    msg.data[4] = current >> 24;
+    msg.data[5] = current >> 16;
+    msg.data[6] = current >> 8;
+    msg.data[7] = current & 0xff;
+    putToQueue(msg);
+    // beginExtendedPacket(msg.frameId.id, msg.dlc);
+    // write(msg.data, msg.dlc);
+    // endPacket();   
+}
+
+void CegCharger::setModuleVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = deviceNumber;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Set_Module_Output_Voltage_Current;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.extended = true;
+    msg.rtr = false;
+    msg.dlc = 8;
+    msg.data[0] = voltage >> 24;
+    msg.data[1] = voltage >> 16;
+    msg.data[2] = voltage >> 8;
+    msg.data[3] = voltage & 0xff;
+    msg.data[4] = current >> 24;
+    msg.data[5] = current >> 16;
+    msg.data[6] = current >> 8;
+    msg.data[7] = current & 0xff;
+    putToQueue(msg);
+    // beginExtendedPacket(msg.frameId.id, msg.dlc);
+    // write(msg.data, msg.dlc);
+    // endPacket();   
 }
 
 int CegCharger::putToQueue(const CanMessage &canMessage)
@@ -68,26 +290,17 @@ int CegCharger::getSendQueueSize()
 
 int CegCharger::processPacket(const CanMessage &canMessage)
 {
-    if (canMessage.frameId.frameField.commandNumber == 0x01 && canMessage.frameId.frameField.errorCode == 0x00)
+    if (canMessage.frameId.frameField.errorCode == 0x00 && canMessage.frameId.frameField.destinationAddress == _controllerAddress)
     {
-        if (canMessage.frameId.frameField.destinationAddress == _controllerAddress)
+        if (canMessage.frameId.frameField.commandNumber == CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information)
         {
-            switch (canMessage.frameId.frameField.deviceNumber)
+            if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
             {
-            case 0x0a:
-                _cegData.systemData.systemVoltage = canMessage.data[0] << 24 + canMessage.data[1] << 16 + canMessage.data[2] << 8 + canMessage.data[3];
-                _cegData.systemData.totalSystemCurrent = canMessage.data[4] << 24 + canMessage.data[5] << 16 + canMessage.data[6] << 8 + canMessage.data[7];
-                break;
-            case 0x0b :
                 
-
-            default:
-                break;
             }
         }
-        
-       
     }
+    return 1;
 }
 
 int CegCharger::updateFrameId(int msgId)
