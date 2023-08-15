@@ -1,35 +1,79 @@
 #include <Arduino.h>
-#include <ESP32CAN.h>
+#include <ArduinoJson.h>
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncJson.h>
+// #include <ESP32CAN.h>
 #include <CAN.h>
-#include <CAN_config.h>
+// #include <CAN_config.h>
 #include <CegCharger.h>
 #include <Vector.h>
 
 int controllerAddress = 0xF0;
+int internalLed = 2;
 
 CegCharger cegCharger(0xF0);
 
 TaskHandle_t canSenderTaskHandle;
 QueueHandle_t canSenderTaskQueue = xQueueCreate(64, sizeof(CanMessage));
 
-int count = 0;
+const char *ssid = "RnD_Sundaya";
+const char *password = "sundaya22";
+
+AsyncWebServer server(80);
 
 // put function declarations here:
-int myFunction(int, int);
+void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
+    Serial.print("Connected to ");
+    Serial.println(ssid);
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("Subnet Mask: ");
+    Serial.println(WiFi.subnetMask());
+    Serial.print("Gateway IP: ");
+    Serial.println(WiFi.gatewayIP());
+    Serial.print("DNS 1: ");
+    Serial.println(WiFi.dnsIP(0));
+    Serial.print("DNS 2: ");
+    Serial.println(WiFi.dnsIP(1));
+    Serial.print("Hostname: ");
+    Serial.println(WiFi.getHostname());
+    digitalWrite(internalLed, HIGH);
+}
+
+void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info){
+    Serial.println("Wifi Connected");
+}
+
+void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
+    digitalWrite(internalLed, LOW);
+    Serial.println("Disconnected from WiFi access point");
+    Serial.print("WiFi lost connection. Reason: ");
+    Serial.println(info.wifi_sta_disconnected.reason);
+    Serial.println("Trying to Reconnect");
+    // WiFi.begin(ssid, password);
+    WiFi.begin(ssid, password);
+}
 
 void onReceive(int _packetSize) 
 {
-  // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  // xSemaphoreGiveFromISR(xCANReceived, &xHigherPriorityTaskWoken);
-  // portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-  // packetSize = _packetSize;
-
   CanMessage canmsg;
   canmsg.frameId.id = cegCharger.packetId();
+
+  if(canmsg.frameId.frameField.destinationAddress != controllerAddress)
+  {
+    return;
+  }
+
+  if (canmsg.frameId.frameField.commandNumber < 1 && canmsg.frameId.frameField.commandNumber > 28) 
+  {
+    return;
+  }
   canmsg.rtr = cegCharger.packetRtr();
   canmsg.extended = cegCharger.packetExtended();
   canmsg.dlc = _packetSize;
-  // Serial.println("Length = " + String(canmsg.dlc));
+
   int i = 0;
   while (cegCharger.available())
   {
@@ -51,66 +95,46 @@ void canTask(void *parameter)
     // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, 0x01);
     // cegCharger.readModuleVoltageCurrent(0x00);
     // cegCharger.readModuleExtraInformation(0x01);
-    cegCharger.setWalkIn(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
-    cegCharger.setWalkIn(CEG_CHARGER::DeviceNumber::Single_Module, 0x00, false);
-    cegCharger.setBlink(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, true);
-    cegCharger.setBlink(CEG_CHARGER::DeviceNumber::Single_Module, 0x00, false);
-    cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
-    cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, 0x01);
-    cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Group_Module, 0x02);
-    cegCharger.setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, 300000, 10000);
-    cegCharger.setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
-    cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, 300000, 10000);
-    cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
+    // cegCharger.setWalkIn(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+    // cegCharger.setWalkIn(CEG_CHARGER::DeviceNumber::Single_Module, 0x00, false);
+    // cegCharger.setBlink(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, true);
+    // cegCharger.setBlink(CEG_CHARGER::DeviceNumber::Single_Module, 0x00, false);
+    // cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+    // cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, 0x01);
+    // cegCharger.setOnOff(CEG_CHARGER::DeviceNumber::Group_Module, 0x02);
+    // cegCharger.setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, 300000, 10000);
+    // cegCharger.setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
+    // cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, 300000, 10000);
+    // cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
 
-    if (cegCharger.run())
+    if (!cegCharger.run())
     {
-
-    }
-    else
-    {
-      if(xQueueReceive(canSenderTaskQueue, &rxmsg, 1000)==pdTRUE)
+      if(xQueueReceive(canSenderTaskQueue, &rxmsg, 100)==pdTRUE)
       {
-        Serial.println("Count : " + String(count));
-        Serial.print("Frame id : ");
-        Serial.println(rxmsg.frameId.id, HEX);
-        Serial.println("Extended : " + String(rxmsg.extended));
-        Serial.println("Remote : " + String(rxmsg.rtr));
-        Serial.println("Length : " + String(rxmsg.dlc));
-        Serial.print("Data : ");
-        for (size_t i = 0; i < rxmsg.dlc; i++)
+        if (cegCharger.processPacket(rxmsg))
         {
-          Serial.print(rxmsg.data[i], HEX);
-          Serial.print(" ");
+          cegCharger.printStack();
         }
-        Serial.println();
-        count++;
       }
       else
       {
+        cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+        cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
 
+        for (size_t i = 0; i < 8; i++)
+        {
+          cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
+          cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
+        }
+
+        for (size_t i = 0; i < 16; i++)
+        {
+          cegCharger.readModuleVoltageCurrent(i);
+          cegCharger.readModuleExtraInformation(i);
+        }
       }
     }
-    
-    CanMessage canmsg;
-    canmsg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
-    canmsg.frameId.frameField.deviceNumber = CEG_CHARGER::DeviceNumber::Single_Module;
-    canmsg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information;
-    canmsg.frameId.frameField.destinationAddress = 0x00;
-    canmsg.frameId.frameField.sourceAddress = 0xf0;
-    canmsg.extended = true;
-    canmsg.rtr = false;
-    canmsg.dlc = 8;
-    canmsg.data[0] = 0x00;
-    canmsg.data[1] = 0x01;
-    canmsg.data[2] = 0x02;
-    canmsg.data[3] = 0x03;
-    canmsg.data[4] = 0x04;
-    canmsg.data[5] = 0x05;
-    canmsg.data[6] = 0x06;
-    canmsg.data[7] = 0x07;
-
-    
+   
     vTaskDelay(10 / portTICK_PERIOD_MS); 
   }
 }
@@ -127,6 +151,22 @@ void setup() {
 
   cegCharger.onReceive(onReceive);
 
+  WiFi.disconnect(true);
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
+  WiFi.mode(WIFI_MODE_NULL);
+  WiFi.mode(WIFI_STA);
+
+  WiFi.onEvent(WiFiStationConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
+  WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println(".");
+    delay(500);
+  }
+  
   xTaskCreatePinnedToCore(
     canTask,
     "canTask",
