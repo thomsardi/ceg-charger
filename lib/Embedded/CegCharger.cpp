@@ -9,7 +9,7 @@ CegCharger::CegCharger(int controllerAddress)
     _canMessage.setStorage(_canMessageStorage);
     _groupData.setStorage(_cegData.grpData);
     _moduleData.setStorage(_cegData.mdlData);
-    fillStack();
+    // fillStack();
 }
 
 void CegCharger::fillStack()
@@ -44,13 +44,14 @@ void CegCharger::fillStack()
 
 void CegCharger::printStack()
 {
+    Serial.println("===== Stack Info =====");
     Serial.println("System Voltage : " + String(_cegData.systemData.systemVoltage));
     Serial.println("Total System Current : " + String(_cegData.systemData.totalSystemCurrent));
     Serial.println("Connected Module : " + String(_cegData.systemData.connectedModule));
 
     for (size_t i = 0; i < _groupData.size(); i++)
     {
-        Serial.println("Group Number : " + String(_groupData.at(i).connectedModule));
+        Serial.println("Group Number : " + String(_groupData.at(i).number));
         Serial.println("Group Voltage : " + String(_groupData.at(i).groupVoltage));
         Serial.println("Total Group Current : " + String(_groupData.at(i).totalGroupCurrent));
         Serial.println("Connected Module : " + String(_groupData.at(i).connectedModule));
@@ -62,10 +63,12 @@ void CegCharger::printStack()
         Serial.println("Module Number : " + String(_moduleData.at(i).number));
         Serial.println("Module Voltage : " + String(_moduleData.at(i).moduleVoltage));
         Serial.println("Module Current : " + String(_moduleData.at(i).moduleCurrent));
+        Serial.println("Module Temperature : " + String(_moduleData.at(i).temperature));
         Serial.println("State 0 : " + String(_moduleData.at(i).moduleState.state0.val));
         Serial.println("State 1 : " + String(_moduleData.at(i).moduleState.state1.val));
         Serial.println("State 2 : " + String(_moduleData.at(i).moduleState.state2.val));
-    }       
+    }    
+    Serial.println("=========");   
 
 }
 
@@ -145,7 +148,7 @@ void CegCharger::readModuleExtraInformation(int destinationAddress)
     endPacket();   
 }
 
-void CegCharger::setWalkIn(int deviceNumber, int destinationAddress, bool enable, uint16_t value)
+void CegCharger::setWalkIn(int deviceNumber, int destinationAddress, uint8_t enable, uint16_t value)
 {
     CanMessage msg;
     msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
@@ -165,7 +168,7 @@ void CegCharger::setWalkIn(int deviceNumber, int destinationAddress, bool enable
     // endPacket();   
 }
 
-void CegCharger::setBlink(int deviceNumber, int destinationAddress, bool blink)
+void CegCharger::setBlink(int deviceNumber, int destinationAddress, uint8_t blink)
 {
     CanMessage msg;
     msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
@@ -183,7 +186,7 @@ void CegCharger::setBlink(int deviceNumber, int destinationAddress, bool blink)
     // endPacket();   
 }
 
-void CegCharger::setOnOff(int deviceNumber, int destinationAddress, bool off)
+void CegCharger::setOnOff(int deviceNumber, int destinationAddress, uint8_t off)
 {
     CanMessage msg;
     msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
@@ -251,6 +254,66 @@ void CegCharger::setModuleVoltageCurrent(int deviceNumber, int destinationAddres
     // endPacket();   
 }
 
+void CegCharger::insertGroupData(const CegData::GroupData &grpData, int commandNumber)
+{
+    for (size_t i = 0; i < _groupData.size(); i++)
+    {
+        if (_groupData.at(i).number == grpData.number)
+        {
+            switch (commandNumber)
+            {
+            case CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information:
+                _groupData[i].groupVoltage = grpData.groupVoltage;
+                _groupData[i].totalGroupCurrent = grpData.totalGroupCurrent;
+                _groupData[i].counter++;
+                // Serial.println("mod : " + String(grpData.connectedModule));
+                return;
+                break;
+            case CEG_CHARGER::CommandNumber::Read_System_Number_Information:
+                _groupData[i].connectedModule = grpData.connectedModule;
+                _groupData[i].counter++;
+                return;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    _groupData.push_back(grpData);
+    
+}
+
+void CegCharger::insertModuleData(const CegData::ModuleData &mdlData, int commandNumber)
+{
+    for (size_t i = 0; i < _moduleData.size(); i++)
+    {
+        if (_moduleData.at(i).number == mdlData.number)
+        {
+            switch (commandNumber)
+            {
+            case CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information:
+                _moduleData[i].moduleVoltage = mdlData.moduleVoltage;
+                _moduleData[i].moduleCurrent = mdlData.moduleCurrent;
+                _moduleData[i].counter++;
+                return;
+                break;
+            case CEG_CHARGER::CommandNumber::Read_Module_Number_Temperature_State_Information:
+                _moduleData[i].connectedGroup = mdlData.connectedGroup;
+                _moduleData[i].temperature = mdlData.temperature;
+                _moduleData[i].moduleState.state2.val = mdlData.moduleState.state2.val;
+                _moduleData[i].moduleState.state1.val = mdlData.moduleState.state1.val;
+                _moduleData[i].moduleState.state0.val = mdlData.moduleState.state0.val;
+                _moduleData[i].counter++;
+                return;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    _moduleData.push_back(mdlData);
+}
+
 int CegCharger::putToQueue(const CanMessage &canMessage)
 {
     int status = 0;
@@ -290,233 +353,277 @@ int CegCharger::getSendQueueSize()
 
 int CegCharger::processPacket(const CanMessage &canMessage)
 {
-    if (canMessage.frameId.frameField.errorCode == 0x00 && canMessage.frameId.frameField.destinationAddress == _controllerAddress)
+    int status = 0;
+    if (canMessage.frameId.frameField.errorCode == 0x00)
     {
-        if (canMessage.frameId.frameField.commandNumber == CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information)
+        switch (canMessage.frameId.frameField.commandNumber)
         {
+        case CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information :
             if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
             {
-                
+                FloatRepresent f;
+                f.buff[0] = canMessage.data[3];
+                f.buff[1] = canMessage.data[2];
+                f.buff[2] = canMessage.data[1];
+                f.buff[3] = canMessage.data[0];
+                _cegData.systemData.systemVoltage = f.floatVal;
+                f.buff[0] = canMessage.data[7];
+                f.buff[1] = canMessage.data[6];
+                f.buff[2] = canMessage.data[5];
+                f.buff[3] = canMessage.data[4];
+                _cegData.systemData.totalSystemCurrent = f.floatVal;
+                _cegData.systemData.counter++;
+                status = 1;               
             }
+            else
+            {
+                CegData::GroupData grpData;
+                grpData.number = canMessage.frameId.frameField.sourceAddress;
+                FloatRepresent f;
+                f.buff[0] = canMessage.data[3];
+                f.buff[1] = canMessage.data[2];
+                f.buff[2] = canMessage.data[1];
+                f.buff[3] = canMessage.data[0];
+                grpData.groupVoltage = f.floatVal;
+                f.buff[0] = canMessage.data[7];
+                f.buff[1] = canMessage.data[6];
+                f.buff[2] = canMessage.data[5];
+                f.buff[3] = canMessage.data[4];
+                grpData.totalGroupCurrent = f.floatVal;
+                insertGroupData(grpData, CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information);
+                status = 1;
+            }
+            break;
+        case CEG_CHARGER::CommandNumber::Read_System_Number_Information :
+            if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
+            {
+                _cegData.systemData.counter++;
+                _cegData.systemData.connectedModule = canMessage.data[2];    
+                status = 1;        
+            }
+            else
+            {
+                CegData::GroupData grpData;
+                grpData.number = canMessage.frameId.frameField.sourceAddress;
+                grpData.connectedModule = canMessage.data[2];
+                insertGroupData(grpData, CEG_CHARGER::CommandNumber::Read_System_Number_Information);
+                status = 1;
+            }
+            break;
+        case CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information :
+            if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
+            {
+                CegData::ModuleData mdlData;
+                mdlData.number = canMessage.frameId.frameField.sourceAddress;
+                FloatRepresent f;
+                f.buff[0] = canMessage.data[3];
+                f.buff[1] = canMessage.data[2];
+                f.buff[2] = canMessage.data[1];
+                f.buff[3] = canMessage.data[0];
+                mdlData.moduleVoltage = f.floatVal;
+                f.buff[0] = canMessage.data[7];
+                f.buff[1] = canMessage.data[6];
+                f.buff[2] = canMessage.data[5];
+                f.buff[3] = canMessage.data[4];
+                mdlData.moduleCurrent = f.floatVal;
+                insertModuleData(mdlData, CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information);    
+                status = 1;     
+            }
+            break;
+        case CEG_CHARGER::CommandNumber::Read_Module_Number_Temperature_State_Information :
+            if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
+            {
+                CegData::ModuleData mdlData;
+                mdlData.number = canMessage.frameId.frameField.sourceAddress;
+                mdlData.connectedGroup = canMessage.data[2];
+                mdlData.temperature = canMessage.data[4];
+                mdlData.moduleState.state2.val = canMessage.data[5];
+                mdlData.moduleState.state1.val = canMessage.data[6];
+                mdlData.moduleState.state0.val = canMessage.data[7];
+                insertModuleData(mdlData, CEG_CHARGER::CommandNumber::Read_Module_Number_Temperature_State_Information); 
+                status = 1;        
+            }
+            break;
+        default:
+            break;
         }
-    }
-    return 1;
-}
-
-int CegCharger::updateFrameId(int msgId)
-{
-    switch (msgId)
-    {
-        case MessageIdRequest::Module_On_Off_32:
-            _pCode = 0x38;
-            _subAddress = 0;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-        case MessageIdRequest::Module_On_Off_64:
-            _pCode = 0x38;
-            _subAddress = 0;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Online_Status_32:
-            _pCode = 0x2C;
-            _subAddress = 0;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Online_Status_64:
-            _pCode = 0x2C;
-            _subAddress = 0;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;    
-        case MessageIdRequest::Module_Voltage_Mode:
-            _pCode = 0x38;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Output_Voltage:
-            _pCode = 0x38;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Output_Current:
-            _pCode = 0x38;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Modify_Group:
-            _pCode = 0x38;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-        case MessageIdRequest::Query_Single_Module_Info:
-            _pCode = 0x38;
-            _monitorGroup = 0x1c;
-            _monitorSubAddress = 0;
-            _destinationAddr = (_groupNumber << 6) + _subAddress;
-            _sourceAddr = (_monitorGroup << 6) + _monitorSubAddress;
-            buildFrameId(_pCode, _destinationAddr, _sourceAddr);
-            return 1;
-            break;
-    }
-    _frameId = -1;
-    return -1;
-}
-
-int CegCharger::buildFrameId(int protocolCode, int destinationAddr, int sourceAddr)
-{
-    _frameId = (protocolCode << 22) + (destinationAddr << 11) + sourceAddr;
-    // _frameId = (_pCode << 22) + (_groupNumber << 17) + (_subAddress << 11) + (_monitorGroup << 6) + _monitorSubAddress;
-    return 1;
-}
-
-int CegCharger::updateData(int msgId, int32_t value)
-{
-    switch (msgId)
-    {
-        case MessageIdRequest::Module_On_Off_32:
-            _msgType = 0x03;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;
-        case MessageIdRequest::Module_On_Off_64:
-            _msgType = 0x03;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Online_Status_32:
-            _msgType = 0x50;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Online_Status_64:
-            _msgType = 0x50;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;     
-        case MessageIdRequest::Module_Voltage_Mode:
-            _msgType = 0x03;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Output_Voltage:
-            _msgType = 0x03;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Output_Current:
-            _msgType = 0x03;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;
-        case MessageIdRequest::Module_Modify_Group:
-            _msgType = 0x03;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(value);
-            return 1;
-            break;
-        case MessageIdRequest::Query_Single_Module_Info:
-            _msgType = 0x50;
-            _errType = 0xF0;
-            _msgId[0] = (msgId & 0xFF00) >> 8 ;
-            _msgId[1] = msgId & 0x00FF;
-            buildData(0);
-            return 1;
-            break;
-    }
-    _msgType = 0;
-    _msgId[0] = 0;
-    _msgId[1] = 0;
-    return -1;
-}
-
-int CegCharger::buildData(int32_t value)
-{
-    _data[0] = _msgType;
-    _data[1] = _errType;
-    _data[2] = _msgId[0];
-    _data[3] = _msgId[1];
-    _data[4] = (value & 0xFF000000) >> 24;
-    _data[5] = (value & 0xFF0000) >> 16;
-    _data[6] = (value & 0xFF00) >> 8;
-    _data[7] = value & 0xFF;
-    return 1;
-}
-
-int32_t CegCharger::getFrameId()
-{
-    return _frameId;
-}
-
-int CegCharger::getData(int destination[], size_t arrSize)
-{
-    int status = -1;
-    if (arrSize >= 8)
-    {
-        for (size_t i = 0; i < arrSize; i++)
-        {
-            destination[i] = _data[i];
-        }
-        status = 1;
     }
     return status;
+}
+
+String CegCharger::getDataJson()
+{
+    String output;
+    DynamicJsonDocument doc(3072); doc;
+    doc["counter"] = _cegData.systemData.counter;
+    doc["system_voltage"] = _cegData.systemData.systemVoltage;
+    doc["system_current"] = _cegData.systemData.totalSystemCurrent;
+    doc["connected_module"] = _cegData.systemData.connectedModule;
+
+    JsonArray group_data = doc.createNestedArray("group_data");
+    for (size_t i = 0; i < _groupData.size(); i++)
+    {
+        JsonObject group_data_0 = group_data.createNestedObject();
+        group_data_0["counter"] = _groupData.at(i).counter;
+        group_data_0["group_number"] = _groupData.at(i).number;
+        group_data_0["group_voltage"] = _groupData.at(i).groupVoltage;
+        group_data_0["group_current"] = _groupData.at(i).totalGroupCurrent;
+        group_data_0["connected_module"] = _groupData.at(i).connectedModule;
+        JsonArray group_data_0_module_data = group_data_0.createNestedArray("module_data");
+        for (size_t j = 0; j < _moduleData.size(); j++)
+        {
+            if (_moduleData.at(j).connectedGroup == _groupData.at(i).number)
+            {
+                JsonObject group_data_0_module_data_0 = group_data_0_module_data.createNestedObject();
+                group_data_0_module_data_0["counter"] = _moduleData.at(j).counter;
+                group_data_0_module_data_0["module_number"] = _moduleData.at(j).number;
+                group_data_0_module_data_0["module_voltage"] = _moduleData.at(j).moduleVoltage;
+                group_data_0_module_data_0["module_current"] = _moduleData.at(j).moduleCurrent;
+                group_data_0_module_data_0["module_temperature"] = _moduleData.at(j).temperature;
+                group_data_0_module_data_0["state_0"] = _moduleData.at(j).moduleState.state0.val;
+                group_data_0_module_data_0["state_1"] = _moduleData.at(j).moduleState.state1.val;
+                group_data_0_module_data_0["state_2"] = _moduleData.at(j).moduleState.state2.val;
+            }            
+        }
+        
+    }
+    serializeJson(doc, output);
+    return output;
+}
+
+int CegCharger::parseSyncSystemVoltageCurrentJson(JsonVariant &json)
+{ 
+    if(!json.containsKey("voltage"))
+    {
+        return -1;
+    }
+
+    if(!json.containsKey("total_current"))
+    {
+        return -1;
+    }
+    
+    auto voltage = json["voltage"].as<int>();
+    auto totalCurrent = json["total_current"].as<int>();
+    setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, voltage, totalCurrent);
+    return 1;
+}
+
+int CegCharger::parseSyncGroupVoltageCurrentJson(JsonVariant &json)
+{ 
+    if(!json.containsKey("group"))
+    {
+        return -1;
+    }
+
+    if(!json.containsKey("voltage"))
+    {
+        return -1;
+    }
+
+    if(!json.containsKey("total_current"))
+    {
+        return -1;
+    }
+    
+    auto group = json["group"].as<int>();
+    auto voltage = json["voltage"].as<int>();
+    auto totalCurrent = json["total_current"].as<int>();
+    setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, group, voltage, totalCurrent);
+    return 1;
+}
+
+int CegCharger::parseAllGroupVoltageCurrentJson(JsonVariant &json)
+{ 
+    if(!json.containsKey("voltage"))
+    {
+        return -1;
+    }
+
+    if(!json.containsKey("current"))
+    {
+        return -1;
+    }
+    
+    auto voltage = json["voltage"].as<int>();
+    auto current = json["current"].as<int>();
+    setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, voltage, current);
+    return 1;
+}
+
+int CegCharger::parseSingleGroupVoltageCurrentJson(JsonVariant &json)
+{ 
+    if(!json.containsKey("group"))
+    {
+        return -1;
+    }
+
+    if(!json.containsKey("voltage"))
+    {
+        return -1;
+    }
+
+    if(!json.containsKey("current"))
+    {
+        return -1;
+    }
+    
+    auto group = json["group"].as<int>();
+    auto voltage = json["voltage"].as<int>();
+    auto current = json["current"].as<int>();
+    setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, group, voltage, current);
+    return 1;
+}
+
+int CegCharger::parseSetAllModuleJson(JsonVariant &json)
+{ 
+    if(!json.containsKey("disable"))
+    {
+        return -1;
+    }
+    
+    auto disable = json["disable"].as<int>();
+    setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, disable);
+    return 1;
+}
+
+int CegCharger::parseSetSingleGroupJson(JsonVariant &json)
+{ 
+    if(!json.containsKey("group"))
+    {
+        return -1;
+    }
+    
+    if(!json.containsKey("disable"))
+    {
+        return -1;
+    }
+    
+    auto group = json["group"].as<int>();
+    auto disable = json["disable"].as<int>();
+    setOnOff(CEG_CHARGER::DeviceNumber::Group_Module, group, disable);
+    return 1;
+}
+
+int CegCharger::parseSetSingleModuleJson(JsonVariant &json)
+{ 
+    if(!json.containsKey("module"))
+    {
+        return -1;
+    }
+    if(!json.containsKey("disable"))
+    {
+        return -1;
+    }
+    auto module = json["module"].as<int>();
+    auto disable = json["disable"].as<int>();
+    setOnOff(CEG_CHARGER::DeviceNumber::Single_Module, module, disable);
+    return 1;
+}
+
+CegData* CegCharger::getStackAddress()
+{
+    return &_cegData;
 }
 
 /**

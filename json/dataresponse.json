@@ -1,0 +1,164 @@
+{
+    "counter" : 1,
+    "system_voltage" : 500.0,
+    "system_current" : 50.0,
+    "connected_module" : 5,
+    "group_data" : [
+        {
+            "counter" : 1,
+            "group_number" : 1,
+            "group_voltage" : 500.0,
+            "group_current" : 5.0,
+            "connected_module" : 5,
+            "module_data" : [
+                {
+                    "counter" : 1,
+                    "module_number" : 1,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 2,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 2,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 2,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                }
+            ]
+        },
+        {
+            "counter" : 1,
+            "group_number" : 2,
+            "group_voltage" : 500.0,
+            "group_current" : 5.0,
+            "connected_module" : 5,
+            "module_data" : [
+                {
+                    "counter" : 1,
+                    "module_number" : 3,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 4,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 2,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 2,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                }
+            ]
+        },
+        {
+            "counter" : 1,
+            "group_number" : 3,
+            "group_voltage" : 500.0,
+            "group_current" : 5.0,
+            "connected_module" : 5,
+            "module_data" : [
+                {
+                    "counter" : 1,
+                    "module_number" : 5,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 6,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                }
+            ]
+        },
+        {
+            "counter" : 1,
+            "group_number" : 3,
+            "group_voltage" : 500.0,
+            "group_current" : 5.0,
+            "connected_module" : 5,
+            "module_data" : [
+                {
+                    "counter" : 1,
+                    "module_number" : 5,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                },
+                {
+                    "counter" : 1,
+                    "module_number" : 6,
+                    "module_voltage" : 500.0,
+                    "module_current" : 3.5,
+                    "module_temperature" : -20,
+                    "state_0" : 1,
+                    "state_1" : 64,
+                    "state_2" : 2
+                }
+            ]
+        }
+    ]
+}

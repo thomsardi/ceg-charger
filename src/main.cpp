@@ -12,16 +12,21 @@
 
 int controllerAddress = 0xF0;
 int internalLed = 2;
+unsigned long lastReconnectMillis;
+int reconnectInterval = 3000;
 
 CegCharger cegCharger(0xF0);
 
 TaskHandle_t canSenderTaskHandle;
 QueueHandle_t canSenderTaskQueue = xQueueCreate(64, sizeof(CanMessage));
 
-const char *ssid = "RnD_Sundaya";
-const char *password = "sundaya22";
+const char *ssid = "mikrotik";
+const char *password = "mikrotik";
 
 AsyncWebServer server(80);
+IPAddress local_ip(192, 168, 2, 162);
+IPAddress gateway(192, 168, 2, 1);
+IPAddress subnet(255, 255, 255, 0);
 
 // put function declarations here:
 void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
@@ -118,19 +123,19 @@ void canTask(void *parameter)
       }
       else
       {
-        cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
-        cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+        // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+        // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
 
         for (size_t i = 0; i < 8; i++)
         {
-          cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
-          cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
+          // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
+          // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
         }
 
         for (size_t i = 0; i < 16; i++)
         {
-          cegCharger.readModuleVoltageCurrent(i);
-          cegCharger.readModuleExtraInformation(i);
+          // cegCharger.readModuleVoltageCurrent(i);
+          // cegCharger.readModuleExtraInformation(i);
         }
       }
     }
@@ -141,6 +146,7 @@ void canTask(void *parameter)
 
 void setup() {
   // put your setup code here, to run once:
+  pinMode(internalLed, OUTPUT);
   Serial.begin(115200);
   while (!Serial);
 
@@ -156,6 +162,11 @@ void setup() {
   WiFi.mode(WIFI_MODE_NULL);
   WiFi.mode(WIFI_STA);
 
+  // if (!WiFi.config(local_ip, gateway, subnet))
+  // {
+  //     Serial.println("STA Failed to configure");
+  // }
+
   WiFi.onEvent(WiFiStationConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
   WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
@@ -163,10 +174,169 @@ void setup() {
 
   while (WiFi.status() != WL_CONNECTED)
   {
-    Serial.println(".");
+    Serial.print(".");
     delay(500);
   }
   
+  server.on("/get-data", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+      Serial.println("get-data");
+      Serial.println(cegCharger.getDataJson());
+      request->send(200, "application/json", cegCharger.getDataJson()); });
+
+  AsyncCallbackJsonWebHandler *setAllSystemVoltageCurrent = new AsyncCallbackJsonWebHandler("/set-sync-system-voltage-current", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int status = cegCharger.parseSyncSystemVoltageCurrentJson(json);
+    if (status > 0)
+    {
+      response.replace(":status:", String(status));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setGroupSystemVoltageCurrent = new AsyncCallbackJsonWebHandler("/set-sync-group-voltage-current", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int status = cegCharger.parseSyncGroupVoltageCurrentJson(json);
+    if (status > 0)
+    {
+      response.replace(":status:", String(status));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setGroupVoltageCurrent = new AsyncCallbackJsonWebHandler("/set-all-group-voltage-current", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int status = cegCharger.parseAllGroupVoltageCurrentJson(json);
+    if (status > 0)
+    {
+      response.replace(":status:", String(status));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setModuleVoltageCurrent = new AsyncCallbackJsonWebHandler("/set-single-group-voltage-current", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int status = cegCharger.parseSingleGroupVoltageCurrentJson(json);
+    if (status > 0)
+    {
+      response.replace(":status:", String(status));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setAllModule = new AsyncCallbackJsonWebHandler("/set-all-module", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int status = cegCharger.parseSetAllModuleJson(json);
+    if (status > 0)
+    {
+      response.replace(":status:", String(status));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setSingleModule = new AsyncCallbackJsonWebHandler("/set-single-module", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int status = cegCharger.parseSetSingleModuleJson(json);
+    if (status > 0)
+    {
+      response.replace(":status:", String(status));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setSingleGroup = new AsyncCallbackJsonWebHandler("/set-single-group", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int status = cegCharger.parseSetSingleGroupJson(json);
+    if (status > 0)
+    {
+      response.replace(":status:", String(status));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  server.onNotFound([](AsyncWebServerRequest *request) {
+        request->send(404);
+    });
+
+  server.addHandler(setAllSystemVoltageCurrent);
+  server.addHandler(setGroupSystemVoltageCurrent);
+  server.addHandler(setGroupVoltageCurrent);
+  server.addHandler(setModuleVoltageCurrent);
+  server.addHandler(setAllModule);
+  server.addHandler(setSingleModule);
+  server.addHandler(setSingleGroup);
+  server.begin();
+
   xTaskCreatePinnedToCore(
     canTask,
     "canTask",
@@ -181,20 +351,12 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  // Serial.println("Array Size : " + String(arrSize));
-  
-
-  // if (cegCharger.putToQueue(canmsg))
-  // {
-  //   Serial.println("Success put to queue");
-  // }
-
-  // CAN.beginExtendedPacket(0xabcdef);
-  // CAN.write('w');
-  // CAN.write('o');
-  // CAN.write('r');
-  // CAN.write('l');
-  // CAN.write('d');
-  // CAN.endPacket();
+  if ((WiFi.status() != WL_CONNECTED) && (millis() - lastReconnectMillis >= reconnectInterval)) {
+    digitalWrite(internalLed, LOW);
+    Serial.println("Reconnecting to WiFi...");
+    WiFi.disconnect();
+    WiFi.reconnect();
+    lastReconnectMillis = millis();
+  }
   delay(10);
 }

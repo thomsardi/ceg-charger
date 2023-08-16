@@ -7,6 +7,7 @@
 #include <CegChargerDataDef.h>
 #include <CAN.h>
 #include <Vector.h>
+#include <ArduinoJson.h>
 
 #define REG_BASE                   0x3ff6b000
 
@@ -46,16 +47,28 @@ class CegCharger : public ESP32SJA1000Class{
         int isSendQueueEmpty();
         int getSendQueueSize();
         int processPacket(const CanMessage &canMessage);
-
+        
+        void printStack();
         void readSystemVoltageCurrent(int deviceNumber, int destinationAddress);
         void readSystemNumberInformation(int deviceNumber, int destinationAddress);
         void readModuleVoltageCurrent(int destinationAddress);
         void readModuleExtraInformation(int destinationAddress);
-        void setWalkIn(int deviceNumber, int destinationAddress, bool enable = true, uint16_t value = 0);
-        void setBlink(int deviceNumber, int destinationAddress, bool blink = false);
-        void setOnOff(int deviceNumber, int destinationAddress, bool off = true);
+        void setWalkIn(int deviceNumber, int destinationAddress, uint8_t enable = 1, uint16_t value = 0);
+        void setBlink(int deviceNumber, int destinationAddress, uint8_t blink = 0);
+        void setOnOff(int deviceNumber, int destinationAddress, uint8_t off);
         void setSystemVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current);
         void setModuleVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current);
+
+        int parseSyncSystemVoltageCurrentJson(JsonVariant &json);
+        int parseSyncGroupVoltageCurrentJson(JsonVariant &json);
+        int parseAllGroupVoltageCurrentJson(JsonVariant &json);
+        int parseSingleGroupVoltageCurrentJson(JsonVariant &json);
+        int parseSetAllModuleJson(JsonVariant &json);
+        int parseSetSingleGroupJson(JsonVariant &json);
+        int parseSetSingleModuleJson(JsonVariant &json);
+        String getDataJson();
+
+        CegData* getStackAddress();
 
         using CANControllerClass::filterExtended;
         virtual int filterExtended(long id, long mask);
@@ -74,7 +87,9 @@ class CegCharger : public ESP32SJA1000Class{
         void modifyRegister(uint8_t address, uint8_t mask, uint8_t value);
         void writeRegister(uint8_t address, uint8_t value);
         void fillStack();
-        void printStack();
+        
+        void insertGroupData(const CegData::GroupData &grpData, int commandNumber);
+        void insertModuleData(const CegData::ModuleData &mdlData, int commandNumber);
         bool _loopback;
         int _controllerAddress;
         int _destinationAddr;

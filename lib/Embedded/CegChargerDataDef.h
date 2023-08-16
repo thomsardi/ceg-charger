@@ -72,25 +72,29 @@ struct CegData
 {
     struct SystemData 
     {
-        float systemVoltage;
-        float totalSystemCurrent;
-        uint8_t connectedModule;
+        uint32_t counter = 0;
+        float systemVoltage = 0;
+        float totalSystemCurrent = 0;
+        uint8_t connectedModule = 0;
     } systemData;
 
     struct GroupData 
     {
-        uint8_t number;
-        float groupVoltage;
-        float totalGroupCurrent;
-        uint8_t connectedModule;
+        uint32_t counter = 0;
+        uint8_t number = 0;
+        float groupVoltage = 0;
+        float totalGroupCurrent = 0;
+        uint8_t connectedModule = 0;
     } grpData[8];
 
     struct ModuleData
     {
-        uint8_t number;
-        float moduleVoltage;
-        float moduleCurrent;
-        uint8_t connectedGroup;
+        uint32_t counter = 0;
+        uint8_t number = 0;
+        float moduleVoltage = 0;
+        float moduleCurrent = 0;
+        uint8_t connectedGroup = 0;
+        int8_t temperature = 0;
         struct ModuleState 
         {
             union State_0
@@ -105,7 +109,7 @@ struct CegData
                     uint8_t dischargeAbnormal :1;
                     uint8_t :2;
                 } bitInfo;
-                uint8_t val;
+                uint8_t val = 0;
             } state0;
 
             union State_1
@@ -121,7 +125,7 @@ struct CegData
                     uint8_t walkInEnable :1;
                     uint8_t commInterrupt :1;
                 } bitInfo;
-                uint8_t val;
+                uint8_t val = 0;
             } state1;
 
             union State_2
@@ -137,11 +141,17 @@ struct CegData
                     uint8_t inputOverVoltage :1;
                     uint8_t pfcSideOff :1;
                 } bitInfo;
-                uint8_t val;
+                uint8_t val = 0;
             } state2;
             
         } moduleState;
     } mdlData[16];
+};
+
+union FloatRepresent{
+    float floatVal = 0;
+    int32_t integerVal;
+    uint8_t buff[4];
 };
 
 struct RequestCommand {
@@ -155,103 +165,6 @@ struct ApiRequestCommand {
     int groupNumber = -1;
     int subAddress = -1;
     int32_t value = -1;
-};
-
-struct DCOperatingStatus {
-    int chargerInitStatus;
-    int pfcSoftStartInit_1;
-    int pfcSoftStartInit_2;
-    int pfcSoftStart;
-    int dcdcSoftStart;
-    int dcdcSoftStartWideningStage;
-    int dcdcSoftStartFmStage;
-    int moduleNormal;
-    int moduleShutdown;
-};
-
-struct ACOperatingStatus {
-    int init;
-    int standby;
-    int acdcSoftStart;
-    int normal;
-    int alarm;
-    int monitorShutdown;
-};
-
-struct DCStatus_1 {
-    bool outputOvervoltage;
-    bool overTemperature;
-    bool hardwareFailure;
-    bool operatingMode;
-    bool fanFailure;
-    bool acLimitedState;
-    bool temperatureDerating;
-    bool powerLimitedState;
-    bool moduleOn;
-    bool ouputUndervoltage;
-    bool moduleAddressConflict;
-    bool currentImbalance;
-    bool canCommFail;
-};
-
-struct DCStatus_2 {
-    bool shortCircuit;
-    bool currentImbalance_20s;
-    bool alarmCapacity;
-    bool failureCapacity;
-};
-
-struct ACStatus_1 {
-    bool inputCurrentPhaseLoss;
-    bool inputPhaseLoss_A;
-    bool inputPhaseLoss_B;
-    bool inputPhaseLoss_C;
-    bool busOvervoltage;
-    bool busUndervoltage;
-    bool busVoltageImbalance;
-    bool busVoltageImbalanceOverLimit;
-    bool inputOverload;
-    bool inputOverloadOverlimit;
-    bool inputOvercurrent;
-};
-
-struct ACStatus_2 {
-    bool inputOvervoltage;
-    bool inputUndervoltage;
-    bool inputOverfrequency;
-    bool inputUnderfrequency;
-    bool voltageImbalance;
-    bool sidePhaseLockFailure;
-    bool voltageFastPowerDown;
-    bool abnormalInput;
-    bool busOvervoltageManyTimes;
-    bool wrongSoftwareVer;
-    bool sciCommError;
-};
-
-struct DataCharger {
-    uint16_t msgCount;
-    int monitorGroup = -1;
-    int monitorSubAddress = -1;
-    int groupNumber = -1;
-    int subAddress = -1;
-    int moduleOff = 1;
-    int dcOperatingStatus;
-    int acOperatingStatus;
-    int dcStatus_1;
-    int dcStatus_2;
-    int acStatus_1;
-    int acStatus_2;
-    int32_t outputVoltage;
-    int32_t outputCurrent;
-    int acVersionNumber;
-    int dcVersionNumber;
-    // DCOperatingStatus dcOperatingStatus;
-    // ACOperatingStatus acOperatingStatus;
-    // DCStatus_1 dcStatus_1;
-    // DCStatus_2 dcStatus_2;
-    // ACStatus_1 acStatus_1;
-    // ACStatus_2 acStatus_2;
 };
 
 union FrameId
