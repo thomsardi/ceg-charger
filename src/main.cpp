@@ -10,6 +10,8 @@
 #include <CegCharger.h>
 #include <Vector.h>
 
+// #define DEBUG
+
 int controllerAddress = 0xF0;
 int internalLed = 2;
 unsigned long lastReconnectMillis;
@@ -22,13 +24,22 @@ CegCharger cegCharger(0xF0);
 TaskHandle_t canSenderTaskHandle;
 QueueHandle_t canSenderTaskQueue = xQueueCreate(64, sizeof(CanMessage));
 
-const char *ssid = "mikrotik";
-const char *password = "mikrotik";
+#ifdef DEBUG
+  const char *ssid = "mikrotik";
+  const char *password = "mikrotik";
+  // IPAddress local_ip(192, 168, 2, 162);
+  // IPAddress gateway(192, 168, 2, 1);
+  // IPAddress subnet(255, 255, 255, 0);
+#else
+  const char *ssid = "Laminate";
+  const char *password = "";
+  // IPAddress local_ip(192, 168, 2, 162);
+  // IPAddress gateway(192, 168, 2, 1);
+  // IPAddress subnet(255, 255, 255, 0);
+#endif
 
 AsyncWebServer server(80);
-IPAddress local_ip(192, 168, 2, 162);
-IPAddress gateway(192, 168, 2, 1);
-IPAddress subnet(255, 255, 255, 0);
+
 
 // put function declarations here:
 void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
@@ -60,7 +71,11 @@ void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
     Serial.println(info.wifi_sta_disconnected.reason);
     Serial.println("Trying to Reconnect");
     // WiFi.begin(ssid, password);
-    WiFi.begin(ssid, password);
+    #ifdef DEBUG
+      WiFi.begin(ssid, password);
+    #else
+      WiFi.begin(ssid);
+    #endif
 }
 
 void onReceive(int _packetSize) 
@@ -199,7 +214,11 @@ void setup() {
   WiFi.onEvent(WiFiStationConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
   WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
-  WiFi.begin(ssid, password);
+  #ifdef DEBUG
+    WiFi.begin(ssid, password);
+  #else
+    WiFi.begin(ssid);
+  #endif
 
   while (WiFi.status() != WL_CONNECTED)
   {
