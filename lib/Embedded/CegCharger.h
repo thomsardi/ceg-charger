@@ -59,6 +59,8 @@ class CegCharger : public ESP32SJA1000Class{
         void setSystemVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current);
         void setModuleVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current);
 
+        void cleanUp();
+
         int parseSyncSystemVoltageCurrentJson(JsonVariant &json);
         int parseSyncGroupVoltageCurrentJson(JsonVariant &json);
         int parseAllGroupVoltageCurrentJson(JsonVariant &json);

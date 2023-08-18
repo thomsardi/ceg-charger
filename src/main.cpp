@@ -13,6 +13,8 @@
 int controllerAddress = 0xF0;
 int internalLed = 2;
 unsigned long lastReconnectMillis;
+unsigned long lastTime;
+int interval = 5000;
 int reconnectInterval = 3000;
 
 CegCharger cegCharger(0xF0);
@@ -65,16 +67,22 @@ void onReceive(int _packetSize)
 {
   CanMessage canmsg;
   canmsg.frameId.id = cegCharger.packetId();
-
+  // Serial.println("Received");
+  // Serial.println(canmsg.frameId.frameField.destinationAddress);
   if(canmsg.frameId.frameField.destinationAddress != controllerAddress)
   {
+    // Serial.println("Invalid controller address");
     return;
   }
 
-  if (canmsg.frameId.frameField.commandNumber < 1 && canmsg.frameId.frameField.commandNumber > 28) 
+  if (canmsg.frameId.frameField.commandNumber < 1 || canmsg.frameId.frameField.commandNumber > 28) 
   {
+    // Serial.println("Invalid command number");
     return;
   }
+
+  // Serial.println("Process");
+
   canmsg.rtr = cegCharger.packetRtr();
   canmsg.extended = cegCharger.packetExtended();
   canmsg.dlc = _packetSize;
@@ -118,28 +126,35 @@ void canTask(void *parameter)
       {
         if (cegCharger.processPacket(rxmsg))
         {
-          cegCharger.printStack();
+          // cegCharger.printStack();
         }
       }
       else
       {
-        // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
-        // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+        cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+        cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
 
         for (size_t i = 0; i < 8; i++)
         {
-          // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
-          // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
+          cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
+          cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
         }
 
-        for (size_t i = 0; i < 16; i++)
+        for (size_t i = 0; i < 32; i++)
         {
-          // cegCharger.readModuleVoltageCurrent(i);
-          // cegCharger.readModuleExtraInformation(i);
+          cegCharger.readModuleVoltageCurrent(i);
+          cegCharger.readModuleExtraInformation(i);
         }
       }
     }
-   
+
+    if (millis() - lastTime > interval)
+    {
+      cegCharger.cleanUp();
+      cegCharger.printStack();
+      lastTime = millis();
+    }
+
     vTaskDelay(10 / portTICK_PERIOD_MS); 
   }
 }
@@ -155,6 +170,20 @@ void setup() {
     while (1);
   }
 
+  FrameId idFilter;
+  idFilter.frameField.errorCode = 0x00;
+  idFilter.frameField.deviceNumber = 0x0a;
+  idFilter.frameField.commandNumber = 0x00;
+  idFilter.frameField.destinationAddress = controllerAddress;
+  
+  FrameId idMask;
+  idMask.frameField.errorCode = 0x0;
+  idMask.frameField.deviceNumber = 0x1;
+  idMask.frameField.commandNumber = 0x1f;
+  idMask.frameField.destinationAddress = 0;
+  idMask.frameField.sourceAddress = 0xff;
+  
+  cegCharger.filterExtended(idFilter.id, idMask.id);
   cegCharger.onReceive(onReceive);
 
   WiFi.disconnect(true);
@@ -358,5 +387,5 @@ void loop() {
     WiFi.reconnect();
     lastReconnectMillis = millis();
   }
-  delay(10);
+  delay(100);
 }

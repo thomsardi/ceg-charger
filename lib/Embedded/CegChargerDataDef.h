@@ -73,6 +73,7 @@ struct CegData
     struct SystemData 
     {
         uint32_t counter = 0;
+        uint32_t prevCounter = 0;
         float systemVoltage = 0;
         float totalSystemCurrent = 0;
         uint8_t connectedModule = 0;
@@ -81,6 +82,7 @@ struct CegData
     struct GroupData 
     {
         uint32_t counter = 0;
+        uint32_t prevCounter = 0;
         uint8_t number = 0;
         float groupVoltage = 0;
         float totalGroupCurrent = 0;
@@ -90,6 +92,7 @@ struct CegData
     struct ModuleData
     {
         uint32_t counter = 0;
+        uint32_t prevCounter = 0;
         uint8_t number = 0;
         float moduleVoltage = 0;
         float moduleCurrent = 0;

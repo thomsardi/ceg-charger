@@ -1,0 +1,161 @@
+{
+    "client": "Thunder Client",
+    "collectionName": "CEG Charger",
+    "dateExported": "2023-08-18T01:51:15.769Z",
+    "version": "1.1",
+    "folders": [],
+    "requests": [
+        {
+            "_id": "0494b5d2-a00d-4f30-b044-a1f441f95091",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set Sync System Voltage Current",
+            "url": "set-sync-system-voltage-current",
+            "method": "POST",
+            "sortNum": 10000,
+            "created": "2023-08-16T04:37:16.330Z",
+            "modified": "2023-08-16T06:15:24.918Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"voltage\" : 300000,\n    \"total_current\" : 10000\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "528df2cb-d53a-410f-a108-37b40fad219a",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set Sync Group Voltage Current",
+            "url": "set-sync-group-voltage-current",
+            "method": "POST",
+            "sortNum": 15000,
+            "created": "2023-08-16T04:40:14.441Z",
+            "modified": "2023-08-16T06:15:23.263Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"group\" : 2,\n    \"voltage\" : 200000,\n    \"total_current\" : 5000\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "2a404d70-7311-4735-a925-87ecb74af140",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set All Group Voltage Current",
+            "url": "set-all-group-voltage-current",
+            "method": "POST",
+            "sortNum": 17500,
+            "created": "2023-08-16T04:40:46.769Z",
+            "modified": "2023-08-16T06:20:08.558Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"voltage\" : 300000,\n    \"current\" : 10000\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "b9ff3583-4cd1-4ce6-81b0-b95424bdf5ea",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set Group Voltage Current",
+            "url": "set-single-group-voltage-current",
+            "method": "POST",
+            "sortNum": 18750,
+            "created": "2023-08-16T04:41:10.537Z",
+            "modified": "2023-08-16T06:21:49.063Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"group\" : 2,\n    \"voltage\" : 200000,\n    \"current\" : 5000\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "76fa6659-5dc4-49ac-b314-224ab3a70bb0",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set All Module",
+            "url": "set-all-module",
+            "method": "POST",
+            "sortNum": 19375,
+            "created": "2023-08-16T06:37:07.940Z",
+            "modified": "2023-08-16T06:38:03.192Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"disable\" : 1\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "74f3262b-b14d-4eb1-92be-e2fc2d2545a0",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set Single Module",
+            "url": "set-single-module",
+            "method": "POST",
+            "sortNum": 19687.5,
+            "created": "2023-08-16T06:38:04.995Z",
+            "modified": "2023-08-16T10:05:19.582Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"module\" : 1,\n    \"disable\" : 1\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "9b3b3bfe-a6f4-4de7-a426-473a3c5afd44",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set Group",
+            "url": "set-single-group",
+            "method": "POST",
+            "sortNum": 19843.8,
+            "created": "2023-08-16T07:20:26.957Z",
+            "modified": "2023-08-16T10:05:42.224Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"group\" : 1,\n    \"disable\" : 1\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "ce5126e7-17eb-4ebb-aad7-7975072f50cd",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Get System Data",
+            "url": "get-data",
+            "method": "GET",
+            "sortNum": 20000,
+            "created": "2023-08-16T04:37:29.673Z",
+            "modified": "2023-08-16T07:32:41.646Z",
+            "headers": [],
+            "params": [],
+            "tests": []
+        }
+    ],
+    "settings": {
+        "options": {
+            "baseUrl": "http://192.168.2.163/"
+        }
+    }
+}

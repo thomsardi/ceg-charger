@@ -621,6 +621,49 @@ int CegCharger::parseSetSingleModuleJson(JsonVariant &json)
     return 1;
 }
 
+void CegCharger::cleanUp()
+{
+    for (size_t i = 0; i < _moduleData.size(); i++)
+    {
+        if (_moduleData.at(i).prevCounter != _moduleData.at(i).counter)
+        {
+            Serial.println("Update module counter");
+            _moduleData.at(i).prevCounter = _moduleData.at(i).counter;
+        }
+        else
+        {
+            Serial.println("remove module");
+            _moduleData.remove(i);
+        }
+    }
+
+    for (size_t i = 0; i < _groupData.size(); i++)
+    {
+        if (_groupData.at(i).prevCounter != _groupData.at(i).counter)
+        {
+            Serial.println("Update group counter");
+            _groupData.at(i).prevCounter = _groupData.at(i).counter;
+        }
+        else
+        {
+            Serial.println("remove group");
+            _groupData.remove(i);
+        }
+    } 
+
+    if (_cegData.systemData.prevCounter != _cegData.systemData.counter)
+    {
+        _cegData.systemData.prevCounter = _cegData.systemData.counter;
+    }
+    else
+    {
+        _cegData.systemData.connectedModule = 0;
+        _cegData.systemData.systemVoltage = 0;
+        _cegData.systemData.totalSystemCurrent = 0;
+    }
+
+}
+
 CegData* CegCharger::getStackAddress()
 {
     return &_cegData;
@@ -650,15 +693,15 @@ CegData* CegCharger::getStackAddress()
  * ID 1 : 0b1110000000000000011100000000
  * ...
  * ID X : 0b1110001111111111111111111111
- * XNOR : 0b1010110000000000000000000000
- * MASK : 0b0101001111111111111111111111
+ * XNOR : 0b1110110000000000000000000000
+ * MASK : 0b1111000000000000011100000000
 */
 
 int CegCharger::filterExtended(long id, long mask)
 {
     // uint32_t temp;
     // temp = mask;
-    id &= 0x1FFFFFFF;
+    // id &= 0x1FFFFFFF;
     // temp = ~(temp & 0x1FFFFFFF);
     Serial.print("ID Filter : ");
     Serial.println(id, BIN);
