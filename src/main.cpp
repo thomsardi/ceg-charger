@@ -10,12 +10,14 @@
 #include <CegCharger.h>
 #include <Vector.h>
 
-// #define DEBUG
+#define DEBUG
 
 int controllerAddress = 0xF0;
 int internalLed = 2;
 unsigned long lastReconnectMillis;
 unsigned long lastTime;
+unsigned long lastPrintTime;
+int printInterval = 1000;
 int interval = 5000;
 int reconnectInterval = 3000;
 
@@ -31,8 +33,8 @@ QueueHandle_t canSenderTaskQueue = xQueueCreate(64, sizeof(CanMessage));
   // IPAddress gateway(192, 168, 2, 1);
   // IPAddress subnet(255, 255, 255, 0);
 #else
-  const char *ssid = "Laminate";
-  const char *password = "";
+  const char *ssid = "Ruang_Laminate";
+  const char *password = "sundaya22";
   // IPAddress local_ip(192, 168, 2, 162);
   // IPAddress gateway(192, 168, 2, 1);
   // IPAddress subnet(255, 255, 255, 0);
@@ -70,12 +72,7 @@ void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
     Serial.print("WiFi lost connection. Reason: ");
     Serial.println(info.wifi_sta_disconnected.reason);
     Serial.println("Trying to Reconnect");
-    // WiFi.begin(ssid, password);
-    #ifdef DEBUG
-      WiFi.begin(ssid, password);
-    #else
-      WiFi.begin(ssid);
-    #endif
+    WiFi.begin(ssid, password);
 }
 
 void onReceive(int _packetSize) 
@@ -134,7 +131,7 @@ void canTask(void *parameter)
     // cegCharger.setSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
     // cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f, 300000, 10000);
     // cegCharger.setModuleVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, 0x02, 200000, 5000);
-
+    // cegCharger.printStack();
     if (!cegCharger.run())
     {
       if(xQueueReceive(canSenderTaskQueue, &rxmsg, 100)==pdTRUE)
@@ -149,16 +146,23 @@ void canTask(void *parameter)
         cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
         cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
 
-        for (size_t i = 0; i < 8; i++)
+        for (size_t i = 0; i < 60; i++) //send command to each group
         {
           cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
           cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
         }
 
-        for (size_t i = 0; i < 32; i++)
+        for (size_t i = 128; i <= 0; i--) //send command to each module
         {
           cegCharger.readModuleVoltageCurrent(i);
           cegCharger.readModuleExtraInformation(i);
+        }
+
+        for (size_t i = 0; i < cegCharger.getModuleStackSize(); i++)
+        {
+          CegData::ModuleData d = cegCharger.getModuleData(i);
+          cegCharger.readModuleInputVoltageInformation(d.number);
+          cegCharger.readModuleExternalVoltageAvailableCurrent(d.number);
         }
       }
     }
@@ -166,9 +170,15 @@ void canTask(void *parameter)
     if (millis() - lastTime > interval)
     {
       cegCharger.cleanUp();
-      cegCharger.printStack();
+      
       lastTime = millis();
     }
+    if (millis() - lastPrintTime > printInterval)
+    {
+      cegCharger.printStack();
+      lastPrintTime = millis();
+    }
+    
 
     vTaskDelay(10 / portTICK_PERIOD_MS); 
   }
@@ -214,11 +224,7 @@ void setup() {
   WiFi.onEvent(WiFiStationConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
   WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
-  #ifdef DEBUG
-    WiFi.begin(ssid, password);
-  #else
-    WiFi.begin(ssid);
-  #endif
+  WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED)
   {

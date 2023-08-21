@@ -37,15 +37,15 @@ class CegCharger : public ESP32SJA1000Class{
     public :
         CegCharger(int controllerAddress);
         int run();
-        // int sendRequest(int cmd, int32_t value); //Broadcast command
-        // int sendRequest(int cmd, int32_t value, int groupNumber); //Group Broadcast command
-        int putToQueue(const CanMessage &canMessage); //Point to Point command
-        int32_t getFrameId();
+        int putToQueue(const CanMessage &canMessage);
         int endPacket();
         int loopback();
-        int getData(int destination[], size_t arrSize);
         int isSendQueueEmpty();
         int getSendQueueSize();
+        int getModuleStackSize();
+
+        CegData::ModuleData getModuleData(int index);
+
         int processPacket(const CanMessage &canMessage);
         
         void printStack();
@@ -53,7 +53,9 @@ class CegCharger : public ESP32SJA1000Class{
         void readSystemNumberInformation(int deviceNumber, int destinationAddress);
         void readModuleVoltageCurrent(int destinationAddress);
         void readModuleExtraInformation(int destinationAddress);
-        void setWalkIn(int deviceNumber, int destinationAddress, uint8_t enable = 1, uint16_t value = 0);
+        void readModuleInputVoltageInformation(int destinationAddress);
+        void readModuleExternalVoltageAvailableCurrent(int destinationAddress);
+        void setWalkIn(int deviceNumber, int destinationAddress, uint8_t enable = 1, uint16_t time = 0);
         void setBlink(int deviceNumber, int destinationAddress, uint8_t blink = 0);
         void setOnOff(int deviceNumber, int destinationAddress, uint8_t off);
         void setSystemVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current);
@@ -76,39 +78,16 @@ class CegCharger : public ESP32SJA1000Class{
         virtual int filterExtended(long id, long mask);
 
     private :
-        ESP32SJA1000Class _esp32sja1000class;
-        RequestCommand _requestCommand[16];
-        Vector<RequestCommand> _commandList;
         CanMessage _canMessageStorage[32];
         Vector<CanMessage> _canMessage;
-        int updateFrameId(int msgId);
-        int buildFrameId(int protocolCode, int destinationAddr, int sourceAddr);
-        int updateData(int msgId, int32_t value);
-        int buildData(int32_t value);
-        int moduleRequestOnOff_32(int frameId, int buffer[], size_t bufferLength);
         void modifyRegister(uint8_t address, uint8_t mask, uint8_t value);
         void writeRegister(uint8_t address, uint8_t value);
         void fillStack();
-        
         void insertGroupData(const CegData::GroupData &grpData, int commandNumber);
         void insertModuleData(const CegData::ModuleData &mdlData, int commandNumber);
         bool _loopback;
         int _controllerAddress;
-        int _destinationAddr;
-        int _sourceAddr;
-        int _protocolCode;
         uint8_t readRegister(uint8_t address);
-        int32_t _frameId = 0;
-        int _pCode = 0;
-        int _groupNumber = 0;
-        int _subAddress = 0;
-        int _monitorGroup = 0;
-        int _monitorSubAddress = 0;
-        uint8_t _msgType = 0;
-        uint8_t _errType = 0;
-        uint8_t _msgId[2] = {0};
-        uint8_t _msgContent[4] = {0};
-        uint8_t _data[8] = {0};
         CegData _cegData;
         Vector<CegData::GroupData> _groupData;
         Vector<CegData::ModuleData> _moduleData;

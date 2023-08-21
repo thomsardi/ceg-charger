@@ -1,17 +1,23 @@
 
 #include <CegCharger.h>
 
+/**
+ * @brief   class initialization
+ * @param   controllerAddress   address of the controller (0xF0 - 0xF8)
+*/
 CegCharger::CegCharger(int controllerAddress)
 {
     _loopback = false;
     _controllerAddress = controllerAddress;
-    _commandList.setStorage(_requestCommand);
     _canMessage.setStorage(_canMessageStorage);
     _groupData.setStorage(_cegData.grpData);
     _moduleData.setStorage(_cegData.mdlData);
     // fillStack();
 }
 
+/**
+ * @brief   fill the stack with dummy data
+*/
 void CegCharger::fillStack()
 {
     _cegData.systemData.systemVoltage = 460.15;
@@ -42,6 +48,9 @@ void CegCharger::fillStack()
     }        
 }
 
+/**
+ * @brief   print the stack values
+*/
 void CegCharger::printStack()
 {
     Serial.println("===== Stack Info =====");
@@ -61,6 +70,9 @@ void CegCharger::printStack()
     {
         Serial.println("Connected to Group : " + String(_moduleData.at(i).connectedGroup));
         Serial.println("Module Number : " + String(_moduleData.at(i).number));
+        Serial.println("Module Input Voltage : " + String(_moduleData.at(i).inputVoltage));
+        Serial.println("Module External Voltage : " + String(_moduleData.at(i).externalVoltage));
+        Serial.println("Module Available Current : " + String(_moduleData.at(i).availableCurrent));
         Serial.println("Module Voltage : " + String(_moduleData.at(i).moduleVoltage));
         Serial.println("Module Current : " + String(_moduleData.at(i).moduleCurrent));
         Serial.println("Module Temperature : " + String(_moduleData.at(i).temperature));
@@ -72,6 +84,20 @@ void CegCharger::printStack()
 
 }
 
+int CegCharger::getModuleStackSize()
+{
+    return _moduleData.size();
+}
+
+CegData::ModuleData CegCharger::getModuleData(int index)
+{
+    return _moduleData.at(index);
+}
+
+/**
+ * @brief   check for user command stored in _canMessage vector
+ * @return  return 1 if there is user command and send successfully, otherwise return 0
+*/
 int CegCharger::run()
 {
     // printStack();
@@ -92,6 +118,11 @@ int CegCharger::run()
     return status;
 }
 
+/**
+ * @brief   read system voltage and current
+ * @param   deviceNumber    fill with either single_module mode or group_module
+ * @param   destinationAddress  address of the target device (0x00 - 0x3B for group)
+*/
 void CegCharger::readSystemVoltageCurrent(int deviceNumber, int destinationAddress)
 {
     CanMessage msg;
@@ -106,6 +137,11 @@ void CegCharger::readSystemVoltageCurrent(int deviceNumber, int destinationAddre
     endPacket();   
 }
 
+/**
+ * @brief   read system number of connected module
+ * @param   deviceNumber    fill with either single_module mode or group_module
+ * @param   destinationAddress  address of the target device (0x00 - 0x3B for group)
+*/
 void CegCharger::readSystemNumberInformation(int deviceNumber, int destinationAddress)
 {
     CanMessage msg;
@@ -120,6 +156,10 @@ void CegCharger::readSystemNumberInformation(int deviceNumber, int destinationAd
     endPacket();   
 }
 
+/**
+ * @brief   read module p to p voltage and current
+ * @param   destinationAddress  address of the target device
+*/
 void CegCharger::readModuleVoltageCurrent(int destinationAddress)
 {
     CanMessage msg;
@@ -134,6 +174,10 @@ void CegCharger::readModuleVoltageCurrent(int destinationAddress)
     endPacket();   
 }
 
+/**
+ * @brief   read p to p module connected group, state and temperature
+ * @param   destinationAddress  address of the target device
+*/
 void CegCharger::readModuleExtraInformation(int destinationAddress)
 {
     CanMessage msg;
@@ -148,7 +192,50 @@ void CegCharger::readModuleExtraInformation(int destinationAddress)
     endPacket();   
 }
 
-void CegCharger::setWalkIn(int deviceNumber, int destinationAddress, uint8_t enable, uint16_t value)
+/**
+ * @brief   read p to p module input voltage
+ * @param   destinationAddress  address of the target device
+*/
+void CegCharger::readModuleInputVoltageInformation(int destinationAddress)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = CEG_CHARGER::DeviceNumber::Single_Module;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_Module_AC_Input_information;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.dlc = 8;
+    beginExtendedPacket(msg.frameId.id, msg.dlc);
+    write(msg.data, msg.dlc);
+    endPacket();   
+}
+
+/**
+ * @brief   read p to p module external (outside diode)
+ * @param   destinationAddress  address of the target device
+*/
+void CegCharger::readModuleExternalVoltageAvailableCurrent(int destinationAddress)
+{
+    CanMessage msg;
+    msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
+    msg.frameId.frameField.deviceNumber = CEG_CHARGER::DeviceNumber::Single_Module;
+    msg.frameId.frameField.commandNumber = CEG_CHARGER::CommandNumber::Read_Module_External_Voltage_Available_Current;
+    msg.frameId.frameField.destinationAddress = destinationAddress;
+    msg.frameId.frameField.sourceAddress = _controllerAddress; 
+    msg.dlc = 8;
+    beginExtendedPacket(msg.frameId.id, msg.dlc);
+    write(msg.data, msg.dlc);
+    endPacket();   
+}
+
+/**
+ * @brief   set walk in feature
+ * @param   deviceNumber    fill with either single_module mode or group_module
+ * @param   destinationAddress  address of the target device (0x00 - 0x3B for group)
+ * @param   enable  1 to enable the walk in feature, 0 to disable
+ * @param   time    walk in time in 0.01s (e.g 1s = 100)   
+*/
+void CegCharger::setWalkIn(int deviceNumber, int destinationAddress, uint8_t enable, uint16_t time)
 {
     CanMessage msg;
     msg.frameId.frameField.errorCode = CEG_CHARGER::ErrorType::No_Error;
@@ -160,14 +247,20 @@ void CegCharger::setWalkIn(int deviceNumber, int destinationAddress, uint8_t ena
     msg.rtr = false;
     msg.dlc = 8;
     msg.data[0] = enable;
-    msg.data[6] = value >> 8;
-    msg.data[7] = value & 0xff;
+    msg.data[6] = time >> 8;
+    msg.data[7] = time & 0xff;
     putToQueue(msg);
     // beginExtendedPacket(msg.frameId.id, msg.dlc);
     // write(msg.data, msg.dlc);
     // endPacket();   
 }
 
+/**
+ * @brief   set led blink
+ * @param   deviceNumber    fill with either single_module mode or group_module
+ * @param   destinationAddress  address of the target device (0x00 - 0x3B for group)
+ * @param   blink  1 to blink, 0 to normal
+*/
 void CegCharger::setBlink(int deviceNumber, int destinationAddress, uint8_t blink)
 {
     CanMessage msg;
@@ -186,6 +279,12 @@ void CegCharger::setBlink(int deviceNumber, int destinationAddress, uint8_t blin
     // endPacket();   
 }
 
+/**
+ * @brief   set on / off
+ * @param   deviceNumber    fill with either single_module mode or group_module
+ * @param   destinationAddress  address of the target device (0x00 - 0x3B for group)
+ * @param   off  1 to off, 0 to on
+*/
 void CegCharger::setOnOff(int deviceNumber, int destinationAddress, uint8_t off)
 {
     CanMessage msg;
@@ -204,6 +303,13 @@ void CegCharger::setOnOff(int deviceNumber, int destinationAddress, uint8_t off)
     // endPacket();   
 }
 
+/**
+ * @brief   set system voltage and current
+ * @param   deviceNumber    fill with either single_module mode or group_module
+ * @param   destinationAddress  address of the target device (0x00 - 0x3B for group)
+ * @param   voltage voltage values in .001 (e.g to set 450V, fill the voltage as 450000)
+ * @param   current current values in .001 (e.g to set 15A, fill the current as 15000)
+*/
 void CegCharger::setSystemVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current)
 {
     CanMessage msg;
@@ -229,6 +335,13 @@ void CegCharger::setSystemVoltageCurrent(int deviceNumber, int destinationAddres
     // endPacket();   
 }
 
+/**
+ * @brief   set module p to p voltage and current
+ * @param   deviceNumber    fill with either single_module mode or group_module
+ * @param   destinationAddress  address of the target device (0x00 - 0x3B for group)
+ * @param   voltage voltage values in .001 (e.g to set 450V, fill the voltage as 450000)
+ * @param   current current values in .001 (e.g to set 15A, fill the current as 15000)
+*/
 void CegCharger::setModuleVoltageCurrent(int deviceNumber, int destinationAddress, uint32_t voltage, uint32_t current)
 {
     CanMessage msg;
@@ -254,6 +367,11 @@ void CegCharger::setModuleVoltageCurrent(int deviceNumber, int destinationAddres
     // endPacket();   
 }
 
+/**
+ * @brief   store a single GroupData into _groupData container within class
+ *          @note   if the data exist, it will overwrite the existing data, otherwise it will insert it as a new data
+ * @param   commandNumber   act as identifier to separate the group data, since there are 2 type data that need to be insert into the _groupData container
+*/
 void CegCharger::insertGroupData(const CegData::GroupData &grpData, int commandNumber)
 {
     for (size_t i = 0; i < _groupData.size(); i++)
@@ -283,6 +401,11 @@ void CegCharger::insertGroupData(const CegData::GroupData &grpData, int commandN
     
 }
 
+/**
+ * @brief   store a single ModuleData into _moduleData container within class
+ *          @note   if the data exist, it will overwrite the existing data, otherwise it will insert it as a new data
+ * @param   commandNumber   act as identifier to separate the module data, since there are 2 type data that need to be insert into the _moduleData container
+*/
 void CegCharger::insertModuleData(const CegData::ModuleData &mdlData, int commandNumber)
 {
     for (size_t i = 0; i < _moduleData.size(); i++)
@@ -306,6 +429,15 @@ void CegCharger::insertModuleData(const CegData::ModuleData &mdlData, int comman
                 _moduleData[i].counter++;
                 return;
                 break;
+            case CEG_CHARGER::CommandNumber::Read_Module_AC_Input_information:
+                _moduleData[i].inputVoltage = mdlData.inputVoltage;
+                _moduleData[i].counter++;
+                return;
+            case CEG_CHARGER::CommandNumber::Read_Module_External_Voltage_Available_Current:
+                _moduleData[i].externalVoltage = mdlData.externalVoltage;
+                _moduleData[i].availableCurrent = mdlData.availableCurrent;
+                _moduleData[i].counter++;
+                return;
             default:
                 break;
             }
@@ -314,6 +446,12 @@ void CegCharger::insertModuleData(const CegData::ModuleData &mdlData, int comman
     _moduleData.push_back(mdlData);
 }
 
+/**
+ * @brief   put the user command into the internal queue
+ *          @note   this queue will be check everytime run() method is called
+ * @param   canMessage   the can message that needs to be stored
+ * @return  status  return 1 if the command successfully stored into queue, otherwise return 0
+*/
 int CegCharger::putToQueue(const CanMessage &canMessage)
 {
     int status = 0;
@@ -335,6 +473,10 @@ int CegCharger::putToQueue(const CanMessage &canMessage)
     return status;
 }
 
+/**
+ * @brief   check if the internal queue is empty
+ * @return  queueSize  return 1 if the queue empty, otherwise return 0
+*/
 int CegCharger::isSendQueueEmpty()
 {
     int queueSize = 0;
@@ -345,12 +487,20 @@ int CegCharger::isSendQueueEmpty()
     return queueSize;
 }
 
+/**
+ * @brief   get the queue size
+ * @return  the number of element stored in queue
+*/
 int CegCharger::getSendQueueSize()
 {
     return _canMessage.size();
 }
 
-
+/**
+ * @brief   process the received CAN packet and store the data according to frame id
+ * @param   canMessage  the received CAN data
+ * @return  1 if successfully store the data, otherwise 0
+*/
 int CegCharger::processPacket(const CanMessage &canMessage)
 {
     int status = 0;
@@ -361,17 +511,18 @@ int CegCharger::processPacket(const CanMessage &canMessage)
         case CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information :
             if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
             {
-                FloatRepresent f;
-                f.buff[0] = canMessage.data[3];
-                f.buff[1] = canMessage.data[2];
-                f.buff[2] = canMessage.data[1];
-                f.buff[3] = canMessage.data[0];
-                _cegData.systemData.systemVoltage = f.floatVal;
-                f.buff[0] = canMessage.data[7];
-                f.buff[1] = canMessage.data[6];
-                f.buff[2] = canMessage.data[5];
-                f.buff[3] = canMessage.data[4];
-                _cegData.systemData.totalSystemCurrent = f.floatVal;
+                FloatRepresent voltage;
+                voltage.buff[0] = canMessage.data[3];
+                voltage.buff[1] = canMessage.data[2];
+                voltage.buff[2] = canMessage.data[1];
+                voltage.buff[3] = canMessage.data[0];
+                _cegData.systemData.systemVoltage = voltage.floatVal;
+                FloatRepresent current;
+                current.buff[0] = canMessage.data[7];
+                current.buff[1] = canMessage.data[6];
+                current.buff[2] = canMessage.data[5];
+                current.buff[3] = canMessage.data[4];
+                _cegData.systemData.totalSystemCurrent = current.floatVal;
                 _cegData.systemData.counter++;
                 status = 1;               
             }
@@ -379,17 +530,18 @@ int CegCharger::processPacket(const CanMessage &canMessage)
             {
                 CegData::GroupData grpData;
                 grpData.number = canMessage.frameId.frameField.sourceAddress;
-                FloatRepresent f;
-                f.buff[0] = canMessage.data[3];
-                f.buff[1] = canMessage.data[2];
-                f.buff[2] = canMessage.data[1];
-                f.buff[3] = canMessage.data[0];
-                grpData.groupVoltage = f.floatVal;
-                f.buff[0] = canMessage.data[7];
-                f.buff[1] = canMessage.data[6];
-                f.buff[2] = canMessage.data[5];
-                f.buff[3] = canMessage.data[4];
-                grpData.totalGroupCurrent = f.floatVal;
+                FloatRepresent voltage;
+                voltage.buff[0] = canMessage.data[3];
+                voltage.buff[1] = canMessage.data[2];
+                voltage.buff[2] = canMessage.data[1];
+                voltage.buff[3] = canMessage.data[0];
+                grpData.groupVoltage = voltage.floatVal;
+                FloatRepresent current;
+                current.buff[0] = canMessage.data[7];
+                current.buff[1] = canMessage.data[6];
+                current.buff[2] = canMessage.data[5];
+                current.buff[3] = canMessage.data[4];
+                grpData.totalGroupCurrent = current.floatVal;
                 insertGroupData(grpData, CEG_CHARGER::CommandNumber::Read_System_Output_Voltage_Current_Information);
                 status = 1;
             }
@@ -415,17 +567,18 @@ int CegCharger::processPacket(const CanMessage &canMessage)
             {
                 CegData::ModuleData mdlData;
                 mdlData.number = canMessage.frameId.frameField.sourceAddress;
-                FloatRepresent f;
-                f.buff[0] = canMessage.data[3];
-                f.buff[1] = canMessage.data[2];
-                f.buff[2] = canMessage.data[1];
-                f.buff[3] = canMessage.data[0];
-                mdlData.moduleVoltage = f.floatVal;
-                f.buff[0] = canMessage.data[7];
-                f.buff[1] = canMessage.data[6];
-                f.buff[2] = canMessage.data[5];
-                f.buff[3] = canMessage.data[4];
-                mdlData.moduleCurrent = f.floatVal;
+                FloatRepresent voltage;
+                voltage.buff[0] = canMessage.data[3];
+                voltage.buff[1] = canMessage.data[2];
+                voltage.buff[2] = canMessage.data[1];
+                voltage.buff[3] = canMessage.data[0];
+                mdlData.moduleVoltage = voltage.floatVal;
+                FloatRepresent current;
+                current.buff[0] = canMessage.data[7];
+                current.buff[1] = canMessage.data[6];
+                current.buff[2] = canMessage.data[5];
+                current.buff[3] = canMessage.data[4];
+                mdlData.moduleCurrent = current.floatVal;
                 insertModuleData(mdlData, CEG_CHARGER::CommandNumber::Read_Module_Output_Voltage_Current_Information);    
                 status = 1;     
             }
@@ -444,6 +597,27 @@ int CegCharger::processPacket(const CanMessage &canMessage)
                 status = 1;        
             }
             break;
+        case CEG_CHARGER::CommandNumber::Read_Module_AC_Input_information :
+            if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
+            {
+                CegData::ModuleData mdlData;
+                mdlData.number = canMessage.frameId.frameField.sourceAddress;
+                mdlData.inputVoltage = (canMessage.data[0] << 8) + canMessage.data[1];
+                insertModuleData(mdlData, CEG_CHARGER::CommandNumber::Read_Module_AC_Input_information); 
+                status = 1;        
+            }
+            break;
+        case CEG_CHARGER::CommandNumber::Read_Module_External_Voltage_Available_Current :
+            if (canMessage.frameId.frameField.deviceNumber == CEG_CHARGER::DeviceNumber::Single_Module)
+            {
+                CegData::ModuleData mdlData;
+                mdlData.number = canMessage.frameId.frameField.sourceAddress;
+                mdlData.externalVoltage = (canMessage.data[0] << 8) + canMessage.data[1];
+                mdlData.availableCurrent = (canMessage.data[2] << 8) + canMessage.data[3];
+                insertModuleData(mdlData, CEG_CHARGER::CommandNumber::Read_Module_External_Voltage_Available_Current); 
+                status = 1;        
+            }
+            break;
         default:
             break;
         }
@@ -451,6 +625,10 @@ int CegCharger::processPacket(const CanMessage &canMessage)
     return status;
 }
 
+/**
+ * @brief   convert the CegData into json type format
+ * @return  json string formatted
+*/
 String CegCharger::getDataJson()
 {
     String output;
@@ -491,6 +669,11 @@ String CegCharger::getDataJson()
     return output;
 }
 
+/**
+ * @brief   parse the REST API POST from user for setting sync system voltage and current
+ * @param   json    the json contained in the body of the POST Request
+ * @return  1 if successfully get the value in key:value pair, otherwise 0
+*/
 int CegCharger::parseSyncSystemVoltageCurrentJson(JsonVariant &json)
 { 
     if(!json.containsKey("voltage"))
@@ -509,6 +692,11 @@ int CegCharger::parseSyncSystemVoltageCurrentJson(JsonVariant &json)
     return 1;
 }
 
+/**
+ * @brief   parse the REST API POST from user setting sync group voltage and current
+ * @param   json    the json contained in the body of the POST Request
+ * @return  1 if successfully get the value in key:value pair, otherwise 0
+*/
 int CegCharger::parseSyncGroupVoltageCurrentJson(JsonVariant &json)
 { 
     if(!json.containsKey("group"))
@@ -533,6 +721,11 @@ int CegCharger::parseSyncGroupVoltageCurrentJson(JsonVariant &json)
     return 1;
 }
 
+/**
+ * @brief   parse the REST API POST from user setting all group voltage and current
+ * @param   json    the json contained in the body of the POST Request
+ * @return  1 if successfully get the value in key:value pair, otherwise 0
+*/
 int CegCharger::parseAllGroupVoltageCurrentJson(JsonVariant &json)
 { 
     if(!json.containsKey("voltage"))
@@ -551,6 +744,11 @@ int CegCharger::parseAllGroupVoltageCurrentJson(JsonVariant &json)
     return 1;
 }
 
+/**
+ * @brief   parse the REST API POST from user setting single group voltage and current
+ * @param   json    the json contained in the body of the POST Request
+ * @return  1 if successfully get the value in key:value pair, otherwise 0
+*/
 int CegCharger::parseSingleGroupVoltageCurrentJson(JsonVariant &json)
 { 
     if(!json.containsKey("group"))
@@ -575,6 +773,11 @@ int CegCharger::parseSingleGroupVoltageCurrentJson(JsonVariant &json)
     return 1;
 }
 
+/**
+ * @brief   parse the REST API POST from user setting on / off all module
+ * @param   json    the json contained in the body of the POST Request
+ * @return  1 if successfully get the value in key:value pair, otherwise 0
+*/
 int CegCharger::parseSetAllModuleJson(JsonVariant &json)
 { 
     if(!json.containsKey("disable"))
@@ -587,6 +790,11 @@ int CegCharger::parseSetAllModuleJson(JsonVariant &json)
     return 1;
 }
 
+/**
+ * @brief   parse the REST API POST from user setting on / off single group
+ * @param   json    the json contained in the body of the POST Request
+ * @return  1 if successfully get the value in key:value pair, otherwise 0
+*/
 int CegCharger::parseSetSingleGroupJson(JsonVariant &json)
 { 
     if(!json.containsKey("group"))
@@ -605,6 +813,11 @@ int CegCharger::parseSetSingleGroupJson(JsonVariant &json)
     return 1;
 }
 
+/**
+ * @brief   parse the REST API POST from user setting on / off single module
+ * @param   json    the json contained in the body of the POST Request
+ * @return  1 if successfully get the value in key:value pair, otherwise 0
+*/
 int CegCharger::parseSetSingleModuleJson(JsonVariant &json)
 { 
     if(!json.containsKey("module"))
@@ -621,6 +834,10 @@ int CegCharger::parseSetSingleModuleJson(JsonVariant &json)
     return 1;
 }
 
+/**
+ * @brief   cleanup the obsolete data
+ *          @note   will check the counter, if there is difference then the data is updated
+*/
 void CegCharger::cleanUp()
 {
     for (size_t i = 0; i < _moduleData.size(); i++)
@@ -664,6 +881,10 @@ void CegCharger::cleanUp()
 
 }
 
+/**
+ * @brief   get the stack address of CegData container within class
+ * @return  the address of CegData
+*/
 CegData* CegCharger::getStackAddress()
 {
     return &_cegData;
@@ -701,7 +922,7 @@ int CegCharger::filterExtended(long id, long mask)
 {
     // uint32_t temp;
     // temp = mask;
-    // id &= 0x1FFFFFFF;
+    id &= 0x1FFFFFFF;
     // temp = ~(temp & 0x1FFFFFFF);
     Serial.print("ID Filter : ");
     Serial.println(id, BIN);

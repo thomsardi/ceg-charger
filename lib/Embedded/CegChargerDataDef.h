@@ -32,41 +32,13 @@ namespace CEG_CHARGER {
     };
 }
 
-namespace MessageType {
-    enum MessageType {
-        Query_Controller = 0x50,
-        Query_Module_Response = 0x41,
-        Single_Setting_Controller = 0x03,
-        Single_Setting_Module_Response = 0x43
-    };
-}
-
-namespace MessageIdRequest {
-    enum MessageIdRequest {
-        Module_On_Off_32 = 0x0230,
-        Module_On_Off_64 = 0x0232,
-        Module_Online_Status_32 = 0xfffe,
-        Module_Online_Status_64 = 0xffff,
-        Module_Voltage_Mode = 0x0233,
-        Module_Output_Voltage = 0x0021,
-        Module_Output_Current = 0x0022,
-        Module_Modify_Group = 0x001a,
-        Query_Single_Module_Info = 0x0202,
-    };
-}
-
-namespace MessageIdResponse {
-    enum MessageIdResponse {
-        Module_Operating_Status = 0x0202,
-        Module_DC_Status = 0x0203,
-        Module_AC_Status = 0x0204,
-        Module_Output_Voltage = 0x0205,
-        Module_Output_Current = 0x0206,
-        Module_Version = 0x020a,
-        Module_Online_Status_32 = 0xfffe,
-        Module_Online_Status_64 = 0xffff,
-    };
-}
+struct DeviceParameter
+{
+    uint32_t voltage;
+    uint32_t current;
+    char ssid[32];
+    char password[32];
+};
 
 struct CegData 
 {
@@ -94,6 +66,9 @@ struct CegData
         uint32_t counter = 0;
         uint32_t prevCounter = 0;
         uint8_t number = 0;
+        uint16_t inputVoltage;
+        uint16_t externalVoltage;
+        uint16_t availableCurrent;
         float moduleVoltage = 0;
         float moduleCurrent = 0;
         uint8_t connectedGroup = 0;
@@ -155,19 +130,6 @@ union FloatRepresent{
     float floatVal = 0;
     int32_t integerVal;
     uint8_t buff[4];
-};
-
-struct RequestCommand {
-    int msgId;
-    int32_t value;
-    uint8_t groupNumber;
-    uint8_t subAddress;
-};
-
-struct ApiRequestCommand {
-    int groupNumber = -1;
-    int subAddress = -1;
-    int32_t value = -1;
 };
 
 union FrameId
