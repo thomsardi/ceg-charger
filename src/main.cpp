@@ -110,6 +110,8 @@ void onReceive(int _packetSize)
 
 void canTask(void *parameter)
 {
+  int groupNumber = 0;
+  int moduleNumber = 128;
   Serial.println("CAN Task");
   while (1)
   {
@@ -145,18 +147,21 @@ void canTask(void *parameter)
       {
         cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
         cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
+        cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
+        cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
+        cegCharger.readModuleVoltageCurrent(moduleNumber);
+        cegCharger.readModuleExtraInformation(moduleNumber);
+        // for (size_t i = 0; i < 60; i++) //send command to each group
+        // {
+        //   cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
+        //   cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
+        // }
 
-        for (size_t i = 0; i < 60; i++) //send command to each group
-        {
-          cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
-          cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
-        }
-
-        for (size_t i = 128; i <= 0; i--) //send command to each module
-        {
-          cegCharger.readModuleVoltageCurrent(i);
-          cegCharger.readModuleExtraInformation(i);
-        }
+        // for (size_t i = 128; i <= 0; i--) //send command to each module
+        // {
+        //   cegCharger.readModuleVoltageCurrent(i);
+        //   cegCharger.readModuleExtraInformation(i);
+        // }
 
         for (size_t i = 0; i < cegCharger.getModuleStackSize(); i++)
         {
@@ -164,6 +169,19 @@ void canTask(void *parameter)
           cegCharger.readModuleInputVoltageInformation(d.number);
           cegCharger.readModuleExternalVoltageAvailableCurrent(d.number);
         }
+        // groupNumber++;
+        // moduleNumber--;
+
+        if(groupNumber > 60)
+        {
+          groupNumber = 0;
+        }
+
+        if(moduleNumber <= 0)
+        {
+          moduleNumber = 128;
+        }
+
       }
     }
 

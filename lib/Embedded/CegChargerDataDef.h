@@ -55,7 +55,7 @@ struct CegData
     {
         uint32_t counter = 0;
         uint32_t prevCounter = 0;
-        uint8_t number = 0;
+        int16_t number = 0;
         float groupVoltage = 0;
         float totalGroupCurrent = 0;
         uint8_t connectedModule = 0;
@@ -65,7 +65,7 @@ struct CegData
     {
         uint32_t counter = 0;
         uint32_t prevCounter = 0;
-        uint8_t number = 0;
+        int16_t number = 0;
         uint16_t inputVoltage;
         uint16_t externalVoltage;
         uint16_t availableCurrent;

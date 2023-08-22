@@ -84,13 +84,29 @@ void CegCharger::printStack()
 
 }
 
+/**
+ * @brief   get number of element contained withind _moduleData stack
+ * @return  number of element in _moduleData stack
+*/
 int CegCharger::getModuleStackSize()
 {
     return _moduleData.size();
 }
 
+/**
+ * @brief   get the ModuleData element from _moduleData stack at specified index
+ * @param   index   the index of the element
+ * @return  ModuleData at specified index
+*/
 CegData::ModuleData CegCharger::getModuleData(int index)
 {
+    if (index >= _moduleData.size())
+    {
+        CegData::ModuleData data;
+        data.number = -1;
+        return data;
+    }
+
     return _moduleData.at(index);
 }
 
