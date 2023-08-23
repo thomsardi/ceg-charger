@@ -9,6 +9,9 @@
 // #include <CAN_config.h>
 #include <CegCharger.h>
 #include <Vector.h>
+#include <Preferences.h>
+#include <DataDef.h>
+#include <JsonParser.h>
 
 #define DEBUG
 
@@ -26,10 +29,17 @@ CegCharger cegCharger(0xF0);
 TaskHandle_t canSenderTaskHandle;
 QueueHandle_t canSenderTaskQueue = xQueueCreate(64, sizeof(CanMessage));
 
+Preferences network;
+Preferences deviceParameter;
+
+JsonParser jsonParser;
+
+int mode;
+
 #ifdef DEBUG
-  const char *ssid = "mikrotik";
-  const char *password = "mikrotik";
-  // IPAddress local_ip(192, 168, 2, 162);
+  String ssid = "mikrotik";
+  String password = "mikrotik";
+  IPAddress local_ip(192, 168, 2, 162);
   // IPAddress gateway(192, 168, 2, 1);
   // IPAddress subnet(255, 255, 255, 0);
 #else
@@ -72,7 +82,7 @@ void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
     Serial.print("WiFi lost connection. Reason: ");
     Serial.println(info.wifi_sta_disconnected.reason);
     Serial.println("Trying to Reconnect");
-    WiFi.begin(ssid, password);
+    WiFi.begin(ssid.c_str(), password.c_str());
 }
 
 void onReceive(int _packetSize) 
@@ -145,23 +155,27 @@ void canTask(void *parameter)
       }
       else
       {
+        // Serial.println("No CAN Data");
         cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
         cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
-        cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
-        cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
-        cegCharger.readModuleVoltageCurrent(moduleNumber);
-        cegCharger.readModuleExtraInformation(moduleNumber);
-        // for (size_t i = 0; i < 60; i++) //send command to each group
-        // {
-        //   cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
-        //   cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
-        // }
+        // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
+        // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
+        // cegCharger.readModuleVoltageCurrent(moduleNumber);
+        // cegCharger.readModuleExtraInformation(moduleNumber);
+        for (int i = 0; i < 60; i++) //send command to each group
+        {
+          // Serial.println("Send Read System");
+          cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
+          cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
+        }
 
-        // for (size_t i = 128; i <= 0; i--) //send command to each module
-        // {
-        //   cegCharger.readModuleVoltageCurrent(i);
-        //   cegCharger.readModuleExtraInformation(i);
-        // }
+        for (int i = 128; i >= 0; i--) //send command to each module
+        {
+          // Serial.println(i);
+          // Serial.println("Send Read Module");
+          cegCharger.readModuleVoltageCurrent(i);
+          cegCharger.readModuleExtraInformation(i);
+        }
 
         for (size_t i = 0; i < cegCharger.getModuleStackSize(); i++)
         {
@@ -202,6 +216,42 @@ void canTask(void *parameter)
   }
 }
 
+void setDefaultPreference()
+{
+  
+  String mac = WiFi.macAddress();
+  mac.replace(":", "");
+  String defaultSsid = "ESP32-" + mac;
+  network.putString("default_ssid", defaultSsid);
+  network.putString("default_pass", "esp32-default");
+  network.putString("default_ip", "192.168.1.100");
+  network.putString("default_gateway", "192.168.1.1");
+  network.putString("default_subnet", "255.255.255.0");
+  network.putChar("default_server", Network::Server::STATIC);
+  network.putChar("default_mode", Network::MODE::AP);
+  network.putChar("set_flag", 2);
+
+  deviceParameter.putULong("default_voltage", 550000);
+  deviceParameter.putULong("default_current", 15000);
+  deviceParameter.putChar("set_flag", 2);
+}
+
+void setUserPreference()
+{
+  String defaultSsid = WiFi.macAddress();
+  network.putString("ssid", "mikrotik");
+  network.putString("pass", "mikrotik");
+  network.putString("ip", "192.168.2.162");
+  network.putString("gateway", "192.168.2.1");
+  network.putString("subnet", "255.255.255.0");
+  network.putChar("server", Network::Server::DHCP);
+  network.putChar("mode", Network::MODE::STATION);
+
+  deviceParameter.putULong("voltage", 440000);
+  deviceParameter.putULong("current", 10000);
+
+}
+
 void setup() {
   // put your setup code here, to run once:
   pinMode(internalLed, OUTPUT);
@@ -212,6 +262,19 @@ void setup() {
     Serial.println("Starting CAN failed!");
     while (1);
   }
+
+  if (network.begin("network"))
+  {
+    Serial.println("Successfully set network preference");
+  }
+
+  if (deviceParameter.begin("device"))
+  {
+    Serial.println("Successfully set device preference");
+  }
+
+  setDefaultPreference();
+  setUserPreference();
 
   FrameId idFilter;
   idFilter.frameField.errorCode = 0x00;
@@ -232,7 +295,113 @@ void setup() {
   WiFi.disconnect(true);
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
   WiFi.mode(WIFI_MODE_NULL);
-  WiFi.mode(WIFI_STA);
+  // WiFi.mode(WIFI_STA);
+
+  String ipAddress;
+  String gateways;
+  String subnets;
+  IPAddress gateway;
+  IPAddress subnet;
+  int mode;
+
+  if (network.getChar("set_flag") == 1)
+  {
+    ssid = network.getString("default_ssid");
+    password = network.getString("default_pass");
+    ipAddress = network.getString("default_ip");
+    gateways = network.getString("default_gateway");
+    subnets = network.getString("default_subnet");
+    mode = network.getChar("default_mode");
+    int server = network.getChar("default_server");
+    Serial.println("=====Default=====");
+    Serial.println("SSID : " + ssid);
+    Serial.println("Pass : " + password);
+    Serial.println("Ip : " + ipAddress);
+    Serial.println("Gateway : " + gateways);
+    Serial.println("Subnet : " + subnets);
+    switch (mode)
+    {
+    case Network::MODE::AP :
+      Serial.println("Default AP");
+      WiFi.mode(WIFI_AP);
+      break;
+    case Network::MODE::STATION :
+      Serial.println("Default Station");
+      WiFi.mode(WIFI_STA);
+      break;
+    default:
+      break;
+    }
+
+    switch (server)
+    {
+    case Network::Server::STATIC :
+      Serial.println("Default Static");
+      local_ip.fromString(ipAddress);
+      gateway.fromString(gateways);
+      subnet.fromString(subnets);
+      if (!WiFi.config(local_ip, gateway, subnet))
+      {
+        Serial.println("STA Failed to configure");
+      }
+      break;
+
+    case Network::Server::DHCP :
+      Serial.println("Default Dynamic");
+      break;
+    
+    default:
+      break;
+    }
+  }
+  else
+  {
+    ssid = network.getString("ssid");
+    password = network.getString("pass");
+    ipAddress = network.getString("ip");
+    gateways = network.getString("gateway");
+    subnets = network.getString("subnet");
+    mode = network.getChar("mode");
+    int server = network.getChar("server");
+    Serial.println("=====User=====");
+    Serial.println("SSID : " + ssid);
+    Serial.println("Pass : " + password);
+    Serial.println("Ip : " + ipAddress);
+    Serial.println("Gateway : " + gateways);
+    Serial.println("Subnet : " + subnets);
+    switch (mode)
+    {
+    case Network::MODE::AP :
+      Serial.println("User AP");
+      WiFi.mode(WIFI_AP);
+      break;
+    case Network::MODE::STATION :
+      Serial.println("User Station");
+      WiFi.mode(WIFI_STA);
+      break;
+    default:
+      break;
+    }
+
+    switch (server)
+    {
+    case Network::Server::STATIC :
+      local_ip.fromString(ipAddress);
+      gateway.fromString(gateways);
+      subnet.fromString(subnets);
+      if (!WiFi.config(local_ip, gateway, subnet))
+      {
+        Serial.println("STA Failed to configure");
+      }
+      break;
+    case Network::Server::DHCP :
+      Serial.println("User Dynamic");
+      break;
+    
+    default:
+      break;
+    }
+  }
 
   // if (!WiFi.config(local_ip, gateway, subnet))
   // {
@@ -242,14 +411,20 @@ void setup() {
   WiFi.onEvent(WiFiStationConnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
   WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED)
+  if (mode == Network::MODE::STATION)
   {
-    Serial.print(".");
-    delay(500);
+    WiFi.begin(ssid.c_str(), password.c_str());
+    while (WiFi.status() != WL_CONNECTED)
+    {
+      Serial.print(".");
+      delay(500);
+    }
   }
-  
+  else
+  {
+    WiFi.softAP(ssid,password);
+  }
+    
   server.on("/get-data", HTTP_GET, [](AsyncWebServerRequest *request)
     {
       Serial.println("get-data");
@@ -396,6 +571,59 @@ void setup() {
     }
   });
 
+  AsyncCallbackJsonWebHandler *setNetwork = new AsyncCallbackJsonWebHandler("/set-network", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    NetworkSetting setting = jsonParser.parseNetworkSetting(json);
+    if (setting.flag > 0)
+    {
+      network.putString("ssid", setting.ssid);
+      network.putString("pass", setting.pass);
+      network.putString("ip", setting.ip);
+      network.putString("gateway", setting.gateway);
+      network.putString("subnet", setting.subnet);
+      network.putChar("server", setting.server);
+      network.putChar("mode", setting.mode);
+      network.putChar("set_flag", 2);
+      response.replace(":status:", String(setting.flag));
+      request->send(200, "application/json", response);
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setReboot = new AsyncCallbackJsonWebHandler("/set-reboot", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int8_t reboot = jsonParser.parseReboot(json);
+    if (reboot > 0)
+    {
+      response.replace(":status:", String(reboot));
+      request->send(200, "application/json", response);
+
+      if (reboot == 1)
+      {
+        ESP.restart();
+      }
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
   server.onNotFound([](AsyncWebServerRequest *request) {
         request->send(404);
     });
@@ -407,12 +635,14 @@ void setup() {
   server.addHandler(setAllModule);
   server.addHandler(setSingleModule);
   server.addHandler(setSingleGroup);
+  server.addHandler(setNetwork);
+  server.addHandler(setReboot);
   server.begin();
 
   xTaskCreatePinnedToCore(
     canTask,
     "canTask",
-    2048,
+    4096,
     NULL,
     tskIDLE_PRIORITY,
     NULL,
@@ -423,12 +653,16 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if ((WiFi.status() != WL_CONNECTED) && (millis() - lastReconnectMillis >= reconnectInterval)) {
-    digitalWrite(internalLed, LOW);
-    Serial.println("Reconnecting to WiFi...");
-    WiFi.disconnect();
-    WiFi.reconnect();
-    lastReconnectMillis = millis();
+  if (mode == Network::MODE::STATION)
+  {
+    if ((WiFi.status() != WL_CONNECTED) && (millis() - lastReconnectMillis >= reconnectInterval)) {
+      digitalWrite(internalLed, LOW);
+      Serial.println("Reconnecting to WiFi...");
+      WiFi.disconnect();
+      WiFi.reconnect();
+      lastReconnectMillis = millis();
+    }
   }
+  
   delay(100);
 }

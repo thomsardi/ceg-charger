@@ -1,0 +1,7 @@
+{
+    "default_voltage" : 440000,
+    "default_current" : 15000,
+    "voltage" : 440000,
+    "current" : 15000,
+    "set_flag" : 1
+}

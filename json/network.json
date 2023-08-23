@@ -1,0 +1,17 @@
+{
+    "default_ssid" : "ESP32-:MAC:",
+    "default_pass" : "esp32-default",
+    "default_ip" : "192.168.1.100",
+    "default_gateway" : "192.168.1.1",
+    "default_subnet" : "255.255.255.0",
+    "default_server" : 1,
+    "default_mode" : 1,
+    "ssid" : "",
+    "pass" : "",
+    "ip" : "",
+    "gateway" : "",
+    "subnet" : "",
+    "server" : 2,
+    "mode" : 2,
+    "set_flag" : 1
+}

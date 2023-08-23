@@ -1,0 +1,6 @@
+{
+    "default_voltage" : 550000,
+    "default_current" : 15000,
+    "voltage" : 440000,
+    "current" : 10000
+}
