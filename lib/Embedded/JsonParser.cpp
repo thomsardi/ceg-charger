@@ -5,6 +5,25 @@ JsonParser::JsonParser()
 
 }
 
+/**
+ * @brief   get network information such as ssid and ip
+ * @return  json formatted string
+*/
+String JsonParser::getNetworkInfo(NetworkSetting &networkSetting)
+{
+    StaticJsonDocument<256> doc;
+    String output;
+    doc["ssid"] = networkSetting.ssid;
+    doc["ip"] = networkSetting.ip;
+    doc["mode"] = networkSetting.mode;
+    serializeJson(doc, output);
+    return output;
+}
+
+/**
+ * @brief   parse json POST request
+ * @return  NetworkSetting struct datatype that contain the setting, set the .flag attribute to 0 when fail, otherwise set to 1
+*/
 NetworkSetting JsonParser::parseNetworkSetting(JsonVariant &json)
 {
     NetworkSetting setting;
@@ -55,6 +74,10 @@ NetworkSetting JsonParser::parseNetworkSetting(JsonVariant &json)
     return setting;
 }
 
+/**
+ * @brief   parse reboot POST request
+ * @return  value of "reboot" key, return -1 when fail, otherwise return the value of reboot
+*/
 int8_t JsonParser::parseReboot(JsonVariant &json)
 {
     if(!json.containsKey("reboot"))
@@ -64,4 +87,19 @@ int8_t JsonParser::parseReboot(JsonVariant &json)
     
     auto reboot = json["reboot"].as<int8_t>();
     return reboot;
+}
+
+/**
+ * @brief   parse factory_reset POST request
+ * @return  value of "factory_reset" key, return -1 when fail, otherwise return the value of factory_reset
+*/
+int8_t JsonParser::parseFactoryReset(JsonVariant &json)
+{
+    if(!json.containsKey("factory_reset"))
+    {
+        return -1;
+    }
+    
+    auto fReset = json["factory_reset"].as<int8_t>();
+    return fReset;
 }

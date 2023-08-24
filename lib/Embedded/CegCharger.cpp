@@ -992,8 +992,8 @@ int CegCharger::endPacket()
     return 0;
   }
 
-  const int timeoutValue = 500;
-  uint8_t currenTimeout = 0;
+  const int timeoutValue = 100;
+  int currenTimeout = 0;
 
   // wait for TX buffer to free
   while ((readRegister(REG_SR) & 0x04) != 0x04 && (currenTimeout < timeoutValue)) {

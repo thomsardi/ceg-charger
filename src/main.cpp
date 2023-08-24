@@ -20,7 +20,7 @@ int internalLed = 2;
 unsigned long lastReconnectMillis;
 unsigned long lastTime;
 unsigned long lastPrintTime;
-int printInterval = 1000;
+int printInterval = 100;
 int interval = 5000;
 int reconnectInterval = 3000;
 
@@ -34,7 +34,13 @@ Preferences deviceParameter;
 
 JsonParser jsonParser;
 
+String ipAddress;
+String gateways;
+String subnets;
+IPAddress gateway;
+IPAddress subnet;
 int mode;
+int serverType;
 
 #ifdef DEBUG
   String ssid = "mikrotik";
@@ -59,10 +65,13 @@ void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
     Serial.println(ssid);
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+    ipAddress = WiFi.localIP().toString();
     Serial.print("Subnet Mask: ");
     Serial.println(WiFi.subnetMask());
+    subnets = WiFi.subnetMask().toString();
     Serial.print("Gateway IP: ");
     Serial.println(WiFi.gatewayIP());
+    gateways = WiFi.gatewayIP().toString();
     Serial.print("DNS 1: ");
     Serial.println(WiFi.dnsIP(0));
     Serial.print("DNS 2: ");
@@ -70,6 +79,21 @@ void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
     Serial.print("Hostname: ");
     Serial.println(WiFi.getHostname());
     digitalWrite(internalLed, HIGH);
+}
+
+void WiFiAPConnected(WiFiEvent_t event, WiFiEventInfo_t info){
+  Serial.println("AP Connected");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.softAPIP().toString());
+  Serial.print("Subnet Mask: ");
+  Serial.println(subnets);
+  Serial.print("Gateway IP: ");
+  Serial.println(gateways);
+  Serial.print("Hostname: ");
+  Serial.println(WiFi.softAPgetHostname());
+  digitalWrite(internalLed, HIGH);
 }
 
 void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info){
@@ -158,24 +182,27 @@ void canTask(void *parameter)
         // Serial.println("No CAN Data");
         cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
         cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Single_Module, 0x3f);
-        // cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
-        // cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
-        // cegCharger.readModuleVoltageCurrent(moduleNumber);
-        // cegCharger.readModuleExtraInformation(moduleNumber);
-        for (int i = 0; i < 60; i++) //send command to each group
-        {
-          // Serial.println("Send Read System");
-          cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
-          cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
-        }
+        cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
+        cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, groupNumber);
+        cegCharger.readModuleVoltageCurrent(moduleNumber);
+        cegCharger.readModuleExtraInformation(moduleNumber);
+        
+        // for (int i = 0; i < 60; i++) //send command to each group
+        // {
+        //   Serial.println("Send Read System");
+        //   cegCharger.readSystemVoltageCurrent(CEG_CHARGER::DeviceNumber::Group_Module, i);
+        //   Serial.println("Finish read sys voltage current");
+        //   cegCharger.readSystemNumberInformation(CEG_CHARGER::DeviceNumber::Group_Module, i);
+        //   Serial.println("Finish read sys extra information");
+        // }
 
-        for (int i = 128; i >= 0; i--) //send command to each module
-        {
-          // Serial.println(i);
-          // Serial.println("Send Read Module");
-          cegCharger.readModuleVoltageCurrent(i);
-          cegCharger.readModuleExtraInformation(i);
-        }
+        // for (int i = 128; i >= 0; i--) //send command to each module
+        // {
+        //   Serial.println(i);
+        //   Serial.println("Send Read Module");
+        //   cegCharger.readModuleVoltageCurrent(i);
+        //   cegCharger.readModuleExtraInformation(i);
+        // }
 
         for (size_t i = 0; i < cegCharger.getModuleStackSize(); i++)
         {
@@ -183,15 +210,15 @@ void canTask(void *parameter)
           cegCharger.readModuleInputVoltageInformation(d.number);
           cegCharger.readModuleExternalVoltageAvailableCurrent(d.number);
         }
-        // groupNumber++;
-        // moduleNumber--;
+        groupNumber++;
+        moduleNumber--;
 
         if(groupNumber > 60)
         {
           groupNumber = 0;
         }
 
-        if(moduleNumber <= 0)
+        if(moduleNumber < 0)
         {
           moduleNumber = 128;
         }
@@ -207,6 +234,8 @@ void canTask(void *parameter)
     }
     if (millis() - lastPrintTime > printInterval)
     {
+      bool a = digitalRead(internalLed);
+      digitalWrite(internalLed, !a);
       cegCharger.printStack();
       lastPrintTime = millis();
     }
@@ -229,11 +258,11 @@ void setDefaultPreference()
   network.putString("default_subnet", "255.255.255.0");
   network.putChar("default_server", Network::Server::STATIC);
   network.putChar("default_mode", Network::MODE::AP);
-  network.putChar("set_flag", 2);
+  network.putChar("set_flag", 1);
 
   deviceParameter.putULong("default_voltage", 550000);
   deviceParameter.putULong("default_current", 15000);
-  deviceParameter.putChar("set_flag", 2);
+  deviceParameter.putChar("set_flag", 1);
 }
 
 void setUserPreference()
@@ -272,10 +301,14 @@ void setup() {
   {
     Serial.println("Successfully set device preference");
   }
-
-  setDefaultPreference();
-  setUserPreference();
-
+  int8_t networkSetFlag = network.getChar("set_flag");
+  int8_t deviceSetFlag = deviceParameter.getChar("set_flag");
+  if (networkSetFlag != 2)
+  {
+    setDefaultPreference();
+    // setUserPreference();
+  }
+    
   FrameId idFilter;
   idFilter.frameField.errorCode = 0x00;
   idFilter.frameField.deviceNumber = 0x0a;
@@ -297,12 +330,7 @@ void setup() {
   WiFi.mode(WIFI_MODE_NULL);
   // WiFi.mode(WIFI_STA);
 
-  String ipAddress;
-  String gateways;
-  String subnets;
-  IPAddress gateway;
-  IPAddress subnet;
-  int mode;
+  
 
   if (network.getChar("set_flag") == 1)
   {
@@ -312,42 +340,42 @@ void setup() {
     gateways = network.getString("default_gateway");
     subnets = network.getString("default_subnet");
     mode = network.getChar("default_mode");
-    int server = network.getChar("default_server");
-    Serial.println("=====Default=====");
-    Serial.println("SSID : " + ssid);
-    Serial.println("Pass : " + password);
-    Serial.println("Ip : " + ipAddress);
-    Serial.println("Gateway : " + gateways);
-    Serial.println("Subnet : " + subnets);
+    serverType = network.getChar("default_server");
+    // Serial.println("=====Default=====");
+    // Serial.println("SSID : " + ssid);
+    // Serial.println("Pass : " + password);
+    // Serial.println("Ip : " + ipAddress);
+    // Serial.println("Gateway : " + gateways);
+    // Serial.println("Subnet : " + subnets);
     switch (mode)
     {
     case Network::MODE::AP :
-      Serial.println("Default AP");
+      // Serial.println("Default AP");
       WiFi.mode(WIFI_AP);
       break;
     case Network::MODE::STATION :
-      Serial.println("Default Station");
+      // Serial.println("Default Station");
       WiFi.mode(WIFI_STA);
       break;
     default:
       break;
     }
 
-    switch (server)
+    switch (serverType)
     {
     case Network::Server::STATIC :
-      Serial.println("Default Static");
+      // Serial.println("Default Static");
       local_ip.fromString(ipAddress);
       gateway.fromString(gateways);
       subnet.fromString(subnets);
-      if (!WiFi.config(local_ip, gateway, subnet))
+      if (!WiFi.softAPConfig(local_ip, gateway, subnet))
       {
-        Serial.println("STA Failed to configure");
+        Serial.println("AP Failed to configure");
       }
       break;
 
     case Network::Server::DHCP :
-      Serial.println("Default Dynamic");
+      // Serial.println("Default Dynamic");
       break;
     
     default:
@@ -362,28 +390,28 @@ void setup() {
     gateways = network.getString("gateway");
     subnets = network.getString("subnet");
     mode = network.getChar("mode");
-    int server = network.getChar("server");
-    Serial.println("=====User=====");
-    Serial.println("SSID : " + ssid);
-    Serial.println("Pass : " + password);
-    Serial.println("Ip : " + ipAddress);
-    Serial.println("Gateway : " + gateways);
-    Serial.println("Subnet : " + subnets);
+    serverType = network.getChar("server");
+    // Serial.println("=====User=====");
+    // Serial.println("SSID : " + ssid);
+    // Serial.println("Pass : " + password);
+    // Serial.println("Ip : " + ipAddress);
+    // Serial.println("Gateway : " + gateways);
+    // Serial.println("Subnet : " + subnets);
     switch (mode)
     {
     case Network::MODE::AP :
-      Serial.println("User AP");
+      // Serial.println("User AP");
       WiFi.mode(WIFI_AP);
       break;
     case Network::MODE::STATION :
-      Serial.println("User Station");
+      // Serial.println("User Station");
       WiFi.mode(WIFI_STA);
       break;
     default:
       break;
     }
 
-    switch (server)
+    switch (serverType)
     {
     case Network::Server::STATIC :
       local_ip.fromString(ipAddress);
@@ -395,7 +423,7 @@ void setup() {
       }
       break;
     case Network::Server::DHCP :
-      Serial.println("User Dynamic");
+      // Serial.println("User Dynamic");
       break;
     
     default:
@@ -423,6 +451,19 @@ void setup() {
   else
   {
     WiFi.softAP(ssid,password);
+    Serial.println("AP Connected");
+    Serial.print("SSID : ");
+    Serial.println(ssid);
+    Serial.print("IP address: ");
+    ipAddress = WiFi.softAPIP().toString();
+    Serial.println(WiFi.softAPIP().toString());
+    Serial.print("Subnet Mask: ");
+    Serial.println(subnets);
+    Serial.print("Gateway IP: ");
+    Serial.println(gateways);
+    Serial.print("Hostname: ");
+    Serial.println(WiFi.softAPgetHostname());
+    digitalWrite(internalLed, HIGH);
   }
     
   server.on("/get-data", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -430,6 +471,26 @@ void setup() {
       Serial.println("get-data");
       Serial.println(cegCharger.getDataJson());
       request->send(200, "application/json", cegCharger.getDataJson()); });
+
+  server.on("/get-network-info", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+      // Serial.println("get-data");
+      NetworkSetting s;
+      switch (mode)
+      {
+      case Network::MODE::STATION :
+        s.ssid = WiFi.SSID();
+        s.ip = WiFi.localIP().toString();
+        break;
+      case Network::MODE::AP :
+        s.ssid = WiFi.softAPSSID();
+        s.ip = WiFi.softAPIP().toString();
+        break;
+      default:
+        break;
+      }
+      // Serial.println(jsonParser.getNetworkInfo(s));
+      request->send(200, "application/json", jsonParser.getNetworkInfo(s)); });
 
   AsyncCallbackJsonWebHandler *setAllSystemVoltageCurrent = new AsyncCallbackJsonWebHandler("/set-sync-system-voltage-current", [](AsyncWebServerRequest *request, JsonVariant &json)
   {
@@ -608,13 +669,38 @@ void setup() {
     )";
     
     int8_t reboot = jsonParser.parseReboot(json);
-    if (reboot > 0)
+    if (reboot >= 0)
     {
       response.replace(":status:", String(reboot));
       request->send(200, "application/json", response);
-
       if (reboot == 1)
       {
+        ESP.restart();
+      }
+    }
+    else
+    {
+      request->send(400);
+    }
+  });
+
+  AsyncCallbackJsonWebHandler *setFactoryReset = new AsyncCallbackJsonWebHandler("/factory-reset", [](AsyncWebServerRequest *request, JsonVariant &json)
+  {
+    String response = R"(
+    {
+    "status" : :status:
+    }
+    )";
+    
+    int8_t fReset = jsonParser.parseFactoryReset(json);
+    if (fReset >= 0)
+    {
+      response.replace(":status:", String(fReset));
+      request->send(200, "application/json", response);
+      if (fReset == 1)
+      {
+        network.putChar("set_flag", 1);
+        deviceParameter.putChar("set_flag", 1);
         ESP.restart();
       }
     }
@@ -637,12 +723,13 @@ void setup() {
   server.addHandler(setSingleGroup);
   server.addHandler(setNetwork);
   server.addHandler(setReboot);
+  server.addHandler(setFactoryReset);
   server.begin();
 
   xTaskCreatePinnedToCore(
     canTask,
     "canTask",
-    4096,
+    2048,
     NULL,
     tskIDLE_PRIORITY,
     NULL,
