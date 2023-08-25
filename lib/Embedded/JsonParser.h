@@ -21,7 +21,8 @@ class JsonParser {
         NetworkSetting parseNetworkSetting(JsonVariant &json);
         int8_t parseReboot(JsonVariant &json);
         int8_t parseFactoryReset(JsonVariant &json);
-        String getNetworkInfo(NetworkSetting &networkSetting);
+        String getNetworkInfo(const NetworkSetting &networkSetting);
+        String getUserNetworkSetting(const NetworkSetting &networkSetting);
     private :
 };
 

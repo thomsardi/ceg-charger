@@ -330,8 +330,6 @@ void setup() {
   WiFi.mode(WIFI_MODE_NULL);
   // WiFi.mode(WIFI_STA);
 
-  
-
   if (network.getChar("set_flag") == 1)
   {
     ssid = network.getString("default_ssid");
@@ -442,10 +440,17 @@ void setup() {
   if (mode == Network::MODE::STATION)
   {
     WiFi.begin(ssid.c_str(), password.c_str());
+    int timeout = 0;
     while (WiFi.status() != WL_CONNECTED)
     {
+      if (timeout >= 10)
+      {
+        Serial.println("Failed to connect into " + ssid);
+        break;
+      }
       Serial.print(".");
       delay(500);
+      timeout++;
     }
   }
   else
@@ -491,6 +496,20 @@ void setup() {
       }
       // Serial.println(jsonParser.getNetworkInfo(s));
       request->send(200, "application/json", jsonParser.getNetworkInfo(s)); });
+
+  server.on("/get-user-network-setting", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+      // Serial.println("get-data");
+      NetworkSetting s;
+      s.ssid = network.getString("ssid");
+      s.pass = network.getString("pass");
+      s.ip = network.getString("ip");
+      s.gateway = network.getString("gateway");
+      s.subnet = network.getString("subnet");
+      s.mode = network.getChar("mode");
+      s.server = network.getChar("server");
+      // Serial.println(jsonParser.getNetworkInfo(s));
+      request->send(200, "application/json", jsonParser.getUserNetworkSetting(s)); });
 
   AsyncCallbackJsonWebHandler *setAllSystemVoltageCurrent = new AsyncCallbackJsonWebHandler("/set-sync-system-voltage-current", [](AsyncWebServerRequest *request, JsonVariant &json)
   {

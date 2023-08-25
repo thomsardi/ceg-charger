@@ -9,12 +9,31 @@ JsonParser::JsonParser()
  * @brief   get network information such as ssid and ip
  * @return  json formatted string
 */
-String JsonParser::getNetworkInfo(NetworkSetting &networkSetting)
+String JsonParser::getNetworkInfo(const NetworkSetting &networkSetting)
 {
     StaticJsonDocument<256> doc;
     String output;
     doc["ssid"] = networkSetting.ssid;
     doc["ip"] = networkSetting.ip;
+    // doc["mode"] = networkSetting.mode;
+    serializeJson(doc, output);
+    return output;
+}
+
+/**
+ * @brief   get user network setting
+ * @return  json formatted string
+*/
+String JsonParser::getUserNetworkSetting(const NetworkSetting &networkSetting)
+{    
+    StaticJsonDocument<256> doc;
+    String output;
+    doc["ssid"] = networkSetting.ssid;
+    doc["pass"] = networkSetting.pass;
+    doc["ip"] = networkSetting.ip;
+    doc["gateway"] = networkSetting.gateway;
+    doc["subnet"] = networkSetting.subnet;
+    doc["server"] = networkSetting.server;
     doc["mode"] = networkSetting.mode;
     serializeJson(doc, output);
     return output;
@@ -62,12 +81,14 @@ NetworkSetting JsonParser::parseNetworkSetting(JsonVariant &json)
     auto pass = json["pass"].as<String>();
     auto ip = json["ip"].as<String>();
     auto gateway = json["gateway"].as<String>();
+    auto subnet = json["subnet"].as<String>();
     auto server = json["server"].as<int8_t>();
     auto mode = json["mode"].as<int8_t>();
     setting.ssid = ssid;
     setting.pass = pass;
     setting.ip = ip;
     setting.gateway = gateway;
+    setting.subnet = subnet;
     setting.server = server;
     setting.mode = mode;
     setting.flag = 1;

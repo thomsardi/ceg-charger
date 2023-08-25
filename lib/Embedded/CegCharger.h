@@ -6,6 +6,8 @@
 #endif
 #include <CegChargerDataDef.h>
 #include <CAN.h>
+#include <CANBaseClass.h>
+// #include <ESP32SJA1000.h>
 #include <Vector.h>
 #include <ArduinoJson.h>
 
@@ -33,13 +35,11 @@
 
 #define REG_CDR                    0x1F
 
-class CegCharger : public ESP32SJA1000Class{
+class CegCharger : public CANBaseClass{
     public :
         CegCharger(int controllerAddress);
         int run();
         int putToQueue(const CanMessage &canMessage);
-        int endPacket();
-        int loopback();
         int isSendQueueEmpty();
         int getSendQueueSize();
         int getModuleStackSize();
@@ -74,20 +74,13 @@ class CegCharger : public ESP32SJA1000Class{
 
         CegData* getStackAddress();
 
-        using CANControllerClass::filterExtended;
-        virtual int filterExtended(long id, long mask);
-
     private :
         CanMessage _canMessageStorage[32];
         Vector<CanMessage> _canMessage;
-        void modifyRegister(uint8_t address, uint8_t mask, uint8_t value);
-        void writeRegister(uint8_t address, uint8_t value);
         void fillStack();
         void insertGroupData(const CegData::GroupData &grpData, int commandNumber);
         void insertModuleData(const CegData::ModuleData &mdlData, int commandNumber);
-        bool _loopback;
         int _controllerAddress;
-        uint8_t readRegister(uint8_t address);
         CegData _cegData;
         Vector<CegData::GroupData> _groupData;
         Vector<CegData::ModuleData> _moduleData;
