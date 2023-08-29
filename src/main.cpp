@@ -12,6 +12,7 @@
 #include <Preferences.h>
 #include <DataDef.h>
 #include <JsonParser.h>
+#include <OneButton.h>
 
 #define DEBUG
 
@@ -24,7 +25,9 @@ int printInterval = 100;
 int interval = 5000;
 int reconnectInterval = 3000;
 
+
 CegCharger cegCharger(0xF0);
+OneButton button(32);
 
 TaskHandle_t canSenderTaskHandle;
 QueueHandle_t canSenderTaskQueue = xQueueCreate(64, sizeof(CanMessage));
@@ -281,9 +284,25 @@ void setUserPreference()
 
 }
 
+void factoryReset()
+{
+  network.putChar("set_flag", 1);
+  deviceParameter.putChar("set_flag", 1);
+  ESP.restart();
+}
+
+void reboot()
+{
+  ESP.restart();
+}
+
 void setup() {
   // put your setup code here, to run once:
   pinMode(internalLed, OUTPUT);
+  button.attachClick(reboot);
+  button.attachLongPressStart(factoryReset);
+  // startButton.attachDoubleClick(buttonDoubleClicked);
+  button.setDebounceTicks(50);
   Serial.begin(115200);
   while (!Serial);
 
@@ -303,10 +322,11 @@ void setup() {
   }
   int8_t networkSetFlag = network.getChar("set_flag");
   int8_t deviceSetFlag = deviceParameter.getChar("set_flag");
-  if (networkSetFlag != 2)
+  if (networkSetFlag == 0)
   {
+    Serial.println("Initialize setting parameter");
     setDefaultPreference();
-    // setUserPreference();
+    setUserPreference();
   }
     
   FrameId idFilter;
@@ -366,9 +386,20 @@ void setup() {
       local_ip.fromString(ipAddress);
       gateway.fromString(gateways);
       subnet.fromString(subnets);
-      if (!WiFi.softAPConfig(local_ip, gateway, subnet))
+
+      if (mode == Network::MODE::STATION)
       {
-        Serial.println("AP Failed to configure");
+        if (!WiFi.config(local_ip, gateway, subnet))
+        {
+            Serial.println("STA Failed to configure");
+        }
+      }
+      else
+      {
+        if (!WiFi.softAPConfig(local_ip, gateway, subnet))
+        {
+          Serial.println("AP Failed to configure");
+        }
       }
       break;
 

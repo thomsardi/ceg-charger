@@ -1,7 +1,7 @@
 {
     "client": "Thunder Client",
     "collectionName": "CEG Charger",
-    "dateExported": "2023-08-18T01:51:15.769Z",
+    "dateExported": "2023-08-28T01:59:00.417Z",
     "version": "1.1",
     "folders": [],
     "requests": [
@@ -20,6 +20,44 @@
             "body": {
                 "type": "json",
                 "raw": "{\n    \"voltage\" : 300000,\n    \"total_current\" : 10000\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "3e8aff1f-69b6-4412-8d9b-fba3d7b21f20",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set Factory Reset",
+            "url": "factory-reset",
+            "method": "POST",
+            "sortNum": 12500,
+            "created": "2023-08-24T02:15:32.078Z",
+            "modified": "2023-08-24T08:04:33.230Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"factory_reset\" : 1\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "35ce7977-2d6e-4435-96b5-fc7fac98ee0d",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set Reboot",
+            "url": "reboot",
+            "method": "POST",
+            "sortNum": 13750,
+            "created": "2023-08-28T01:57:57.306Z",
+            "modified": "2023-08-28T01:58:17.147Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"reboot\" : 1\n}",
                 "form": []
             },
             "tests": []
@@ -150,6 +188,53 @@
             "modified": "2023-08-16T07:32:41.646Z",
             "headers": [],
             "params": [],
+            "tests": []
+        },
+        {
+            "_id": "fc8782ff-9fc0-4468-88e2-4a4513ded24c",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Get Network Info",
+            "url": "get-network-info",
+            "method": "GET",
+            "sortNum": 30000,
+            "created": "2023-08-24T07:48:50.534Z",
+            "modified": "2023-08-24T07:49:22.414Z",
+            "headers": [],
+            "params": [],
+            "tests": []
+        },
+        {
+            "_id": "79b2fcb3-2a69-4325-88b7-1825ab85986f",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Get User Network Setting",
+            "url": "get-user-network-setting",
+            "method": "GET",
+            "sortNum": 40000,
+            "created": "2023-08-25T06:35:29.726Z",
+            "modified": "2023-08-25T06:35:52.912Z",
+            "headers": [],
+            "params": [],
+            "tests": []
+        },
+        {
+            "_id": "45d6c16c-236b-4fe4-b646-6abfb370e6db",
+            "colId": "9e492ad6-c0fa-4ec8-bf77-7586b5b0fc3d",
+            "containerId": "",
+            "name": "Set User Network Setting",
+            "url": "set-network",
+            "method": "POST",
+            "sortNum": 50000,
+            "created": "2023-08-25T06:39:11.078Z",
+            "modified": "2023-08-25T06:40:07.271Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\r\n    \"ssid\" : \"mikrotik\",\r\n    \"pass\" : \"mikrotik\",\r\n    \"ip\" : \"192.168.2.162\",\r\n    \"gateway\" : \"192.168.2.1\",\r\n    \"subnet\" : \"255.255.255.0\",\r\n    \"server\" : 2,\r\n    \"mode\" : 2\r\n}",
+                "form": []
+            },
             "tests": []
         }
     ],
