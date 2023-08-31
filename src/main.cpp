@@ -22,7 +22,7 @@ unsigned long lastReconnectMillis;
 unsigned long lastTime;
 unsigned long lastPrintTime;
 int printInterval = 100;
-int interval = 5000;
+int interval = 10000;
 int reconnectInterval = 3000;
 
 
@@ -221,7 +221,7 @@ void canTask(void *parameter)
           groupNumber = 0;
         }
 
-        if(moduleNumber < 0)
+        if(moduleNumber <= 68)
         {
           moduleNumber = 128;
         }
